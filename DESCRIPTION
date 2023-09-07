@@ -1,0 +1,16 @@
+Package: StudyManager
+Title: Managing Big Study Data
+Version: 0.0.0.9000
+Authors@R: 
+    person("Nicholas", "Sunderland", , "nicholas.sunderland@bristol.ac.uk", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: Makes managing large amounts of study data easy.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Imports: 
+    checkmate,
+    data.table,
+    methods,
+    rlang
