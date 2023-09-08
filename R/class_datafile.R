@@ -27,7 +27,7 @@ DataFile <- setClass(
     data = data.table::data.table(NULL),
     col_names = character(),
     col_types = list(),
-    col_fill = character()
+    col_fill = NA
   )
 )
 
@@ -39,8 +39,8 @@ setMethod("free", "DataFile", function(x) {
   x
 })
 
-setGeneric("write", function(x, file_path, append, sep, ...) standardGeneric("write"))
-setMethod("write", "DataFile", function(x, file_path, append=FALSE, sep="\t", ...) {
+setGeneric("write_file", function(x, file_path, append, sep, ...) standardGeneric("write_file"))
+setMethod("write_file", "DataFile", function(x, file_path, append=FALSE, sep="\t", ...) {
   data.table::fwrite(x@data, file=file_path, append=append, sep=sep, ...)
 })
 
@@ -125,11 +125,25 @@ setMethod("extract", "DataFile", function(x) {
 })
 
 
-setGeneric("data", function(x) standardGeneric("data"))
-setMethod("data", "DataFile", function(x) x@data)
+#' data
+#'
+#' @param x object
+#'
+#' @return a data.table
+#' @export
+#'
+setGeneric("file_data", function(x) standardGeneric("file_data"))
+#' Title
+#'
+#' @param x obj
+#'
+#' @return object
+#' @export
+#'
+setMethod("file_data", "DataFile", function(x) x@data)
 
-setGeneric("data<-", function(x, value) standardGeneric("data<-"))
-setMethod("data<-", "DataFile", function(x, value) {
+setGeneric("set_data<-", function(x, value) standardGeneric("set_data<-"))
+setMethod("set_data<-", "DataFile", function(x, value) {
   x@data <- value
   validObject(x)
   x

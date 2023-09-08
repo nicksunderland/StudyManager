@@ -14,3 +14,8 @@ Imports:
     data.table,
     methods,
     rlang
+Collate: 
+    'class_datafile.R'
+    'class_study.R'
+    'class_gwas_sumstats.R'
+    'class_studycorpus.R'
