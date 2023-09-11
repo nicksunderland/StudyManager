@@ -45,7 +45,7 @@ setMethod(
 
     # required ref cols
     ref_map <- mapping
-    ref_cols <- c("CPTID","SNP","CHR","BP","MARKER_TYPE","A0","OTHER_ALLELE","EUR_FRQ")
+    ref_cols <- c("cptid","SNP","CHR","BP","MARKER_TYPE","A0","OTHER_ALLELE","EUR_FRQ")
     ref_map <- turn_on(ref_map, ref_cols)
 
     # create the ref data file
@@ -69,11 +69,12 @@ setValidity(
   Class = "GWASsumstats",
   method = function(object) {
 
-stopifnot("Minimum required reference columns: c('CPTID','SNP','CHR','BP','MARKER_TYPE','A0','OTHER_ALLELE','EUR_FRQ')" =
-            all(c('CPTID','SNP','CHR','BP','MARKER_TYPE','A0','OTHER_ALLELE','EUR_FRQ') %in% names(active_cols(object@reference_data_file))))
+stopifnot("Minimum required reference columns: c('cptid','SNP','CHR','BP','MARKER_TYPE','A0','OTHER_ALLELE','EUR_FRQ')" =
+            all(c('cptid','SNP','CHR','BP','MARKER_TYPE','A0','OTHER_ALLELE','EUR_FRQ') %in% names(active_cols(object@reference_data_file))))
 
   }
 )
+
 
 setGeneric("run_qc", function(object, ...) standardGeneric("run_qc"))
 setMethod(
@@ -160,7 +161,7 @@ setMethod(
 
     # create an output directory if it doesn't exist
     output_dir <- file.path(object@dir, object@post_qc_dir)
-    output_path <- file.path(output_dir, paste0(c(...), collapse="_"))
+    output_path <- file.path(output_dir, paste0(c(basename(output_dir), ..., "_post_qc"), collapse="_"))
     if(!dir.exists(output_dir)) {
       dir.create(output_dir, showWarnings=TRUE, recursive=TRUE)
     } else {
@@ -242,7 +243,7 @@ setMethod(
           --fileRef { tmp_ref_path }
           --acolIn { paste0(ref_input_cols, collapse=';')  }
           --acolInClasses { paste0(ref_input_types, collapse=';') }
-          --colRefMarker CPTID
+          --colRefMarker cptid
           --strRefSuffix _REF
           --blnInAll 0
           --blnRefAll 0
@@ -294,7 +295,7 @@ setMethod(
       post_qc_map <- object@mapping
       map_names <- col_names(object@mapping)
       ref_map_names <- col_names(mapping(object@reference_data_file))
-      easy_qc_names <- c("CALL_RATE", "AMBIGUOUS", "STRAND", "CPTID")
+      easy_qc_names <- c("CALL_RATE", "AMBIGUOUS", "STRAND", "cptid")
       out_map <- turn_on(post_qc_map, unique(c(map_names, ref_map_names, easy_qc_names)))
 
       if(file.exists(paste0(output_path, ".gz"))) {

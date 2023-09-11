@@ -20,7 +20,7 @@ s <- GWASsumstats(dir = "/Users/nicholassunderland/Downloads/hermes_progression/
                   file_structure = list(
                     "allcause_death" = list(
                       "autosomes" = "(?i)^(?!.*(?:fe)?male).*allcause.*",
-                      "xchr_male" = "(?i)^(?=.*allcause)(?=\\.*male)(?!.*female).*",
+                      "xchr_male" = "(?i)^(?=.*allcause)(?=.*male)(?!.*female).*",
                       "xchr_female" = "(?i)^(?=.*allcause)(?=.*female).*"
                     ),
                     "composite_1" = list(

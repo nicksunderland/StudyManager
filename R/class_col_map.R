@@ -66,19 +66,16 @@ setMethod(
     output_cols <- rep(NA_character_, length(col_names))
     names(output_cols) <- col_names
     names(input_col_names) <- input_col_names
-    if(ignore.case) {
-      col_names <- toupper(col_names)
-      input_col_names <- toupper(input_col_names)
-    }
 
     for(map_col in col_names) {
 
       for(j in seq_along(input_col_names)) {
 
-        if(input_col_names[j] %in% x@aliases[[map_col]]) {
+        if((ignore.case & (toupper(input_col_names[j]) %in% toupper(x@aliases[[map_col]]))) |
+           (!ignore.case & (input_col_names[j] %in% x@aliases[[map_col]]))){
 
-          output_cols[[map_col]] <- names(input_col_names)[j]
-          break
+            output_cols[[map_col]] <- names(input_col_names)[j]
+            break
 
         }
       }

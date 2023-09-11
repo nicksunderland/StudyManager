@@ -102,7 +102,7 @@ for(name in unique(map$Corrected)) {
               "CALL_RATE"=as.numeric)
   f<-c(f,func[name])
 
-  if(name %in%  c("SNP","SE","P","N_CAS","N","INFO","FRQ","STRAND","CHR","BP","BETA","EFFECT_ALLELE", "OTHER_ALLELE")) {
+  if(name %in%  c("cptid","SNP","SE","P","N_CAS","N","INFO","FRQ","STRAND","CHR","BP","BETA","EFFECT_ALLELE","OTHER_ALLELE")) {
     logi <- TRUE
   } else {
     logi <- FALSE
