@@ -20,10 +20,6 @@ Title
 
 \item{\code{file_structure}}{list.}
 
-\item{\code{col_names}}{character.}
-
-\item{\code{col_types}}{list.}
-
 \item{\code{data_files}}{list.}
 }}
 

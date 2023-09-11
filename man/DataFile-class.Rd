@@ -18,10 +18,6 @@ Title
 
 \item{\code{data}}{data.table.}
 
-\item{\code{col_names}}{character.}
-
-\item{\code{col_types}}{list.}
-
-\item{\code{col_fill}}{ANY.}
+\item{\code{mapping}}{ColMap}
 }}
 

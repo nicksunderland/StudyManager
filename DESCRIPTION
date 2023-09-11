@@ -12,10 +12,16 @@ RoxygenNote: 7.2.3
 Imports: 
     checkmate,
     data.table,
+    EasyQC,
     methods,
-    rlang
+    rlang,
+    rlog
 Collate: 
+    'class_col_map.R'
     'class_datafile.R'
     'class_study.R'
     'class_gwas_sumstats.R'
     'class_studycorpus.R'
+LazyData: true
+Depends: 
+    R (>= 2.10)
