@@ -109,22 +109,35 @@ setMethod(
 )
 
 
-setClassUnion("DataFileORlist", c("list", "DataFile"))
-setGeneric("get_keys", function(input_list,  prefix = NULL) standardGeneric("get_keys"))
+setClassUnion("StudyORDataFileORlist", c("list", "DataFile", "Study"))
+setGeneric("get_data_keys", function(input_list,  prefix = NULL) standardGeneric("get_data_keys"))
 setMethod(
-  f = "get_keys",
-  signature = c("DataFileORlist"),
+  f = "get_data_keys",
+  signature = c("StudyORDataFileORlist"),
   definition = function(input_list, prefix = NULL) {
 
+    if(is(input_list, "Study")) {
+
+      input_list <- input_list@data_files
+
+    }
+
     if (is.list(input_list)) {
+
       result <- list()
+
       for (name in names(input_list)) {
+
         new_prefix <- c(prefix, name)
-        result <- c(result, get_keys(input_list[[name]], new_prefix))
+        result <- c(result, get_data_keys(input_list[[name]], new_prefix))
+
       }
       return(result)
+
     } else {
+
       return(list(prefix))
+
     }
   }
 )
@@ -203,6 +216,37 @@ setMethod(
     object@data_files[[ c(...) ]] <- extract( object@data_files[[ c(...) ]] )
 
     return( file_data(object@data_files[[ c(...) ]] ))
+
+  }
+)
+
+
+setGeneric("get_data_file", function(object, ...) standardGeneric("get_data_file"))
+setMethod(
+  f = "get_data_file",
+  signature = c("Study"),
+  definition = function(object, ...) {
+
+    if(!keys_valid(object@data_files, ...)) {
+      stop("All arguments in '...' must be valid ordered keys into the `data_files` structure")
+    }
+
+    return( object@data_files[[ c(...) ]] )
+
+  }
+)
+
+setGeneric("get_qc_data_file", function(object, ...) standardGeneric("get_qc_data_file"))
+setMethod(
+  f = "get_qc_data_file",
+  signature = c("Study"),
+  definition = function(object, ...) {
+
+    if(!keys_valid(object@qc_data_files, ...)) {
+      stop("All arguments in '...' must be valid ordered keys into the `qc_data_files` structure")
+    }
+
+    return( object@qc_data_files[[ c(...) ]] )
 
   }
 )

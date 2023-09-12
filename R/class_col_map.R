@@ -37,69 +37,24 @@ setValidity(
 setGeneric("col_fill", function(x) standardGeneric("col_fill"))
 setMethod("col_fill", "ColMap", function(x) x@col_fill )
 
+setGeneric("all_cols", function(x) standardGeneric("all_cols"))
+setMethod("all_cols", "ColMap", function(x) names(x@active))
+
 setGeneric("col_types", function(x) standardGeneric("col_types"))
 setMethod("col_types", "ColMap", function(x) x@col_types[x@active] )
 
 setGeneric("col_type_funcs", function(x) standardGeneric("col_type_funcs"))
 setMethod("col_type_funcs", "ColMap", function(x) x@funcs[x@active] )
 
-#' col_names
-#'
-#' @param x ColMap object
-#'
-#' @return active column names
-#' @export
-#'
-setGeneric("col_names", function(x) standardGeneric("col_names"))
-#' @rdname col_names
-setMethod("col_names", "ColMap", function(x) { names(x@active)[x@active] })
+setGeneric("col_aliases", function(x) standardGeneric("col_aliases"))
+setMethod("col_aliases", "ColMap", function(x) x@aliases[x@active] )
 
+setGeneric("col_active", function(x) standardGeneric("col_active"))
+setMethod("col_active", "ColMap", function(x) x@active[x@active] )
 
-setGeneric("parse_col_names", function(x, input_col_names, only.active=TRUE, ignore.case=TRUE) standardGeneric("parse_col_names"))
-#' @rdname columns
+setGeneric("set_active", function(x, col_names, rest.off=TRUE) standardGeneric("set_active"))
 setMethod(
-  f = "parse_col_names",
-  signature = c("ColMap", "character"),
-  definition = function(x, input_col_names, only.active=TRUE, ignore.case=TRUE) {
-
-    col_names <- names(x@aliases)
-    output_cols <- rep(NA_character_, length(col_names))
-    names(output_cols) <- col_names
-    names(input_col_names) <- input_col_names
-
-    for(map_col in col_names) {
-
-      for(j in seq_along(input_col_names)) {
-
-        if((ignore.case & (toupper(input_col_names[j]) %in% toupper(x@aliases[[map_col]]))) |
-           (!ignore.case & (input_col_names[j] %in% x@aliases[[map_col]]))){
-
-            output_cols[[map_col]] <- names(input_col_names)[j]
-            break
-
-        }
-      }
-    }
-
-    if(only.active) {
-
-      output_cols = output_cols[x@active]
-
-    }
-
-    if(any(is.na(output_cols))) {
-      warning(paste0("Some active columns where not found in the input input_col_names: ",
-                     paste0(names(output_cols[is.na(output_cols)]), collapse=", ")))
-    }
-
-    return(output_cols)
-  }
-)
-
-
-setGeneric("turn_on", function(x, col_names, rest.off=TRUE) standardGeneric("turn_on"))
-setMethod(
-  f = "turn_on",
+  f = "set_active",
   signature = c("ColMap", "character"),
   definition = function(x, col_names, rest.off=TRUE) {
 
@@ -131,30 +86,92 @@ setMethod(
   }
 )
 
+setGeneric("col_names", function(x, input_col_names=NULL, only.active=TRUE, ignore.case=TRUE) standardGeneric("col_names"))
+setMethod(
+  f = "col_names",
+  signature = "ColMap",
+  definition = function(x, input_col_names=NULL, only.active=TRUE, ignore.case=TRUE) {
 
-setGeneric("add_col", function(x, col_name, aliases, col_type, func, overwrite=FALSE) standardGeneric("add_col"))
+    stopifnot("`input_col_names` must be a character vector" = is.character(input_col_names) | is.null(input_col_names))
+    stopifnot("`ignore.case` must be logical" = is.logical(ignore.case) & length(ignore.case)==1)
+
+    # cols to get
+    if(only.active) {
+      std_columns <- names(x@active)[x@active]
+    } else {
+      std_columns <- names(x@active)
+    }
+
+    # generate the output named vector; std_name = old_name OR na
+    output_cols <- rep(NA_character_, length(std_columns))
+    names(output_cols) <- std_columns
+
+    # for each standard column
+    for(i in seq_along(std_columns)) {
+
+      # see if there is a matching input col
+      for(j in seq_along(input_col_names)) {
+
+        # does the input column exist in the aliases
+        alias_present <- grepl(pattern = paste0("^", input_col_names[[j]], "$"),
+                               x = x@aliases[[ std_columns[[i]] ]],
+                               ignore.case = ignore.case)
+
+        # add input name to std_name if is an alias
+        if(any(alias_present)) {
+
+          output_cols[[ std_columns[[i]] ]] <- input_col_names[[j]]
+          break
+
+        }
+
+      } # end cycle input_col_names
+
+    } # end cycle std_columns
+
+    # if requesting only active warn if not found
+    if(only.active & any(is.na(output_cols))) {
+
+      warning(paste0("Some active columns where not found in the input_col_names: ",
+                     paste0(names(output_cols[is.na(output_cols)]), collapse=", ")))
+
+    }
+
+    # return
+    return(output_cols)
+  }
+)
+
+setGeneric("add_col", function(x, col_name, aliases, col_type, func, active=TRUE, overwrite=FALSE) standardGeneric("add_col"))
 setMethod(
   f = "add_col",
-  signature = c("ColMap", "character", "list", "character", "function", "logical"),
-  definition = function(x, col_name, aliases, col_type, func, overwrite=FALSE) {
+  signature = c("ColMap", "character", "list", "character", "function", "logical", "logical"),
+  definition = function(x, col_name, aliases, col_type, func, active=TRUE, overwrite=FALSE) {
+
     stopifnot("`col_name` must be a character" = is.character(col_name) & length(col_name)==1)
     stopifnot("`aliases` must be a list of characters" = is.list(aliases) & all(sapply(aliases, is.character)))
-    stopifnot("`col_type` must be an atomic type, one of c('numeric', 'character', 'integer')" = col_type %in% c('numeric', 'character', 'integer'))
+    stopifnot("`col_type` must be an atomic type, one of c('numeric', 'character', 'integer', 'logical)" = col_type %in% c('numeric', 'character', 'integer', 'logical'))
     stopifnot("`overwrite` must be a logical" = is.logical(overwrite) & length(overwrite)==1)
+    stopifnot("`active` must be a logical" = is.logical(active) & length(active)==1)
 
     if(!col_name %in% names(x@aliases)) {
 
+      names(aliases) <- col_name
       x@aliases = c(x@aliases, aliases)
       names(col_type) <- col_name
-      x@col_types = c(x@col_types, list(col_type))
+      x@col_types = c(x@col_types, col_type)
+      func <- list(func)
       names(func) <- col_name
-      x@funcs = c(x@col_types, func)
+      x@funcs = c(x@funcs, func)
+      names(active) <- col_name
+      x@active <- c(x@active, active)
 
     } else if(col_name %in% names(x@aliases) & overwrite) {
 
-      x@aliases[col_name] = aliases
-      x@col_types[col_name]  = col_type
-      x@funcs[col_name] = func
+      x@aliases[[col_name]] = aliases
+      x@col_types[[col_name]] = col_type
+      x@funcs[[col_name]] = func
+      x@active[[col_name]] = active
 
     } else {
 

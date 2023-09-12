@@ -1,9 +1,27 @@
 load_all()
 
-# d <- DataFile(path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.females.allcause.gz")
-# d<- extract(d)
+# map=StudyManager::ColumnMapping
+# map<-turn_on(map,c("LOG_ODDS"),rest.off=FALSE)
+d <- DataFile(
+  path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.females.allcause.gz"
+)
+
+d2 <- DataFile(
+  path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.males.allcause.gz"
+)
+
+df_list=list("F"=d,"M"=d2)
+
+foo<- extract(df_list)
+
+
+get_raw_col_names(d)
+
+
+d <- extract(d)
+#
 # head(d@data)
-# d<- free(d)
+# d <- free(d)
 # head(d@data)
 # #
 # #
@@ -30,9 +48,17 @@ s <- GWASsumstats(dir = "/Users/nicholassunderland/Downloads/hermes_progression/
                   reference_path = "/Users/nicholassunderland/Downloads/genome_reference/ref_justX_1000GP_Phase3_maf_biallelic.gz"
 )
 
-
 #### EasyQC
 s <- run_qc(s)
+
+# plots the manhattan plot
+run_qc_plots(s, "/Users/nicholassunderland/Downloads/figures", "allcause_death")
+
+
+
+
+
+
 # s <- run_qc(s, "allcause_death", "xchr_female")
 
 

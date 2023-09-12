@@ -22,6 +22,7 @@ Collate:
     'class_study.R'
     'class_gwas_sumstats.R'
     'class_studycorpus.R'
+    'histogram_w_outlier_bins.R'
 LazyData: true
 Depends: 
     R (>= 2.10)
