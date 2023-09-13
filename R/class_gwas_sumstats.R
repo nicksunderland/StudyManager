@@ -17,8 +17,8 @@ GWASsumstats <- setClass(
     qc_qual_threshold = "numeric",
     qc_call_rate_threshold = "numeric",
     qc_freq_diff_threshold = "numeric",
-    reference_path = "character",
-    reference_data_file = "DataFile",
+    ref_path = "character",
+    ref_data_file = "DataFile",
     mapping = "ColMap"
   ),
   prototype = list(
@@ -29,33 +29,35 @@ GWASsumstats <- setClass(
     qc_qual_threshold = 0.5,
     qc_call_rate_threshold = 0.98,
     qc_freq_diff_threshold = 0.2,
-    reference_path = character(),
-    reference_data_file = NULL,
+    ref_path = character(),
+    ref_data_file = NULL,
     mapping = StudyManager::ColumnMapping
   )
 )
 
+setValidity(
+  Class = "GWASsumstats",
+  method = function(object) {
+
+  }
+)
 
 setMethod(
   f = "initialize",
   signature = "GWASsumstats",
-  definition = function(.Object, reference_path,
-                                 reference_data_file = NULL,
+  definition = function(.Object, ref_path,
+                                 ref_data_file = NULL,
                                  mapping = StudyManager::ColumnMapping, ...) {
 
     # required ref cols
-    ref_map <- mapping
-    ref_cols <- c("cptid","SNP","CHR","BP","MARKER_TYPE","A0","OTHER_ALLELE","EUR_FRQ")
-    ref_map <- turn_on(ref_map, ref_cols)
+    ref_map <- set_active(mapping, c("cptid","SNP","CHR","BP","MARKER_TYPE","A0","OTHER_ALLELE","EUR_FRQ"))
 
     # create the ref data file
-    .Object@reference_path <- reference_path
-    .Object@reference_data_file <- DataFile(path=.Object@reference_path, mapping=ref_map)
+    .Object@ref_path <- ref_path
+    .Object@ref_data_file <- DataFile(path=.Object@ref_path, mapping=ref_map)
 
-    # required gwas cols , set mapping back to these
-    col_map <- mapping
-    gwas_sumstats_cols <- c("SNP","SE","P","N_CAS","N","INFO","FRQ","CHR","BP","BETA","EFFECT_ALLELE","OTHER_ALLELE","STRAND")
-    .Object@mapping <- turn_on(col_map, gwas_sumstats_cols)
+    # required gwas cols, set mapping back to these
+    .Object@mapping <- set_active(mapping, c("SNP","SE","P","N_CAS","N","INFO","FRQ","CHR","BP","BETA","EFFECT_ALLELE","OTHER_ALLELE","STRAND"))
 
     # initialise the rest
     .Object <- callNextMethod(.Object, ...)
@@ -64,58 +66,69 @@ setMethod(
   }
 )
 
-
-setValidity(
-  Class = "GWASsumstats",
-  method = function(object) {
-
-# stopifnot("Minimum required reference columns: c('cptid','SNP','CHR','BP','MARKER_TYPE','A0','OTHER_ALLELE','EUR_FRQ')" =
-#             all(c('cptid','SNP','CHR','BP','MARKER_TYPE','A0','OTHER_ALLELE','EUR_FRQ') %in% names(active_cols(object@reference_data_file))))
-
-  }
-)
-
-
 setGeneric("run_qc", function(object, ...) standardGeneric("run_qc"))
 setMethod(
   f = "run_qc",
   signature = c("GWASsumstats"),
   definition = function(object, ...) {
 
-    # extract the ref data
-    rlog::log_info("Reading reference data")
-    object@reference_data_file <- extract( object@reference_data_file )
-    tmp_ref_path <- tempfile()
-    write_file(object@reference_data_file, tmp_ref_path)
-    object@reference_data_file <- free( object@reference_data_file )
-    ref_map <- mapping(object@reference_data_file)
-    object@reference_data_file <- DataFile(path=tmp_ref_path, mapping=ref_map)
+    # extract the ref data, enforcing types and doing checks etc.
+    rlog::log_info("Reading reference data into GWASsumstats object")
+    object@ref_data_file <- extract( object@ref_data_file )
 
-    # create an output directory if it doesn't exist; clean up
+    # write out
+    tmp_ref_path <- tempfile()
+    rlog::log_info(glue::glue("Writing parsed reference data to tmp file: {basename(tmp_ref_path)}"))
+    write_file(object@ref_data_file, tmp_ref_path)
+
+    # free the memory / old data
+    object@ref_data_file <- free( object@ref_data_file )
+
+    # update the the ref_data_file with this new tmp file path as the source
+    path(object@ref_data_file) <- tmp_ref_path
+
+    # create an output directory if it doesn't exist; or clean up (delete) if it does
     output_dir <- file.path(object@dir, object@post_qc_dir)
     if(!dir.exists(output_dir)) {
+
+      rlog::log_info(glue::glue("Output directory not found, creating one at: {output_dir}"))
       dir.create(output_dir, showWarnings=TRUE, recursive=TRUE)
-    } else {
-      old_run_files <- list.files(output_dir, pattern="post_qc(.[0-9]+)?(.rep|.ecf|.out|.notinref.txt|.gz)", full.names=TRUE)
-      unlink(old_run_files)
-    }
 
-    # single data file use
-    if(length(c(...) > 0)) {
-
-      object <- easy_qc(object, ...)
-
-    # recursively process all data_files
     } else {
 
-      key_list <- get_data_keys(object@data_files)
-      for(keys in key_list) {
-        args = c(list(object), as.list(keys))
-        object <- do.call("easy_qc", args)
+      output_file_regex <- "post_qc(.[0-9]+)?(.rep|.ecf|.out|.notinref.txt|.gz)"
+      old_run_files <- list.files(output_dir, pattern=output_file_regex, full.names=TRUE)
+
+      if(length(old_run_files) > 0) {
+
+        rlog::log_info(glue::glue("Output directory found containing {length(old_run_files)} files matching pattern '{output_file_regex}' --> DELETING"))
+        unlink(old_run_files)
+
       }
+    }
+
+    # get the keys into the data_files structure
+    if(length(c(...)) == 0) {
+
+      data_file_keys <- get_data_keys(object)
+
+    } else {
+
+      data_file_keys <- list(c(...))
+
+    }
+    stopifnot(keys_valid(object, data_file_keys))
+
+    # process each data_file
+    for(keys in data_file_keys) {
+
+      args = c(list(object), as.list(keys))
+
+      object <- do.call("easy_qc", args)
 
     }
 
+    # return
     validObject(object)
     return(object)
   }
@@ -141,44 +154,40 @@ setMethod(
   definition = function(object, ...) {
 
     # ensure valid keys into the data_file structure
-
-    # print(c(...))
-    # checks failing ?????
-
-    # stopifnot("Internal code error, no `data_file` keys passed to `easy_qc()`" = length(c(...)) > 0)
-    # if(!keys_valid(object@data_files, ...)) {
-    #   stop("All arguments in '...' must be valid ordered keys into the `data_files` structure")
-    # }
+    keys <- c(...)
+    rlog::log_info(glue::glue("Running EASYQC for DataFile{paste0('[',keys,']',collapse='')}"))
+    stopifnot(keys_valid(object, keys))
 
     # the DataFile data
     rlog::log_info("Extracting file data")
-    object@data_files[[ c(...) ]] <- extract( object@data_files[[ c(...) ]] )
+    object@data_files[[ keys ]] <- extract( object@data_files[[ keys ]] )
 
-    # create a written temp file from the DataFile (appropriate col names enforced etc.)
-    mapping <- mapping(object@data_files[[ c(...) ]])
-    input_path <- tempfile()
-    input_types <- col_types(mapping)
+    # get the column mapping details for EasyQC
+    map <- mapping(object@data_files[[ keys ]]) # from each DataFile map as could be different
+    input_types <- col_types(map)
     input_cols <- names(input_types)
 
-    rlog::log_info("Writting standardised file")
-    fwrite(x = file_data( object@data_files[[ c(...) ]] ),
+    # create a written temp file from the DataFile (appropriate col names enforced when we extracted)
+    input_path <- tempfile()
+    rlog::log_debug(glue::glue("Writting standardised data file to: {basename(input_path)}"))
+    fwrite(x = get_data( object@data_files[[ keys ]] ),
            file = input_path,
            sep = "\t")
 
     # free the data
-    rlog::log_info("Freeing memory / DataFile data")
-    object@data_files[[ c(...) ]] <- free( object@data_files[[ c(...) ]] )
+    rlog::log_debug("Freeing memory / DataFile data")
+    object@data_files[[ keys ]] <- free( object@data_files[[ keys ]] )
 
-    # create output path
-    output_path <- file.path(object@dir, object@post_qc_dir, paste0(c(basename(object@dir), ..., "post_qc"), collapse="_"))
-
-    # make sure the output_path is useable
+    # create output path and check
+    output_filename <- paste0(c(basename(object@dir), keys, "post_qc"), collapse="_")
+    output_path <- file.path(object@dir, object@post_qc_dir, output_filename)
+    rlog::log_debug(glue::glue("EASYQC output filename set to: ..output_dir../{output_filename}"))
     stopifnot("`output_path` should be a writable file path" = checkmate::check_path_for_output(output_path, overwrite=TRUE))
 
     # get the written temp file from the reference DataFile
-    tmp_ref_path <- path(object@reference_data_file)
-    ref_mapping <- mapping(object@reference_data_file)
-    ref_input_types <- col_types(ref_mapping)
+    tmp_ref_path <- path(object@ref_data_file)
+    ref_map <- mapping(object@ref_data_file)
+    ref_input_types <- col_types(ref_map)
     ref_input_cols <- names(ref_input_types)
 
     # the ecf config contents
@@ -280,45 +289,46 @@ setMethod(
     rlog::log_info("Starting EASYQC")
     rlog::log_info(glue::glue("ECF file:\n{ecf_str}"))
 
-    # write the file
-    ecf_path <- paste0(output_path, ".ecf")
-    writeLines(ecf_str, ecf_path)
-
-    # run EasyQC
-    easy_qc_success <- EasyQC::EasyQC(ecf_path)
-
-    # get the QC data n.b. no file is written if empty data.table so check forexistance
-    if(!easy_qc_success) {
-
-      rlog::log_error("EasyQC failed")
-
-    } else {
-
-      # save DataFile
-      post_qc_map <- object@mapping
-      map_names <- col_names(object@mapping)
-      easy_qc_names <- c("CALL_RATE","AMBIGUOUS","STRAND","cptid")
-      post_qc_map <- turn_on(post_qc_map, unique(c(map_names, easy_qc_names)))
-      rlog::log_info(glue::glue("EasyQC output DataFiles mapping set to: {paste0(col_names(post_qc_map), collapse=',')}"))
-
-      if(file.exists(paste0(output_path, ".gz"))) {
-
-        object@qc_data_files[[ c(...) ]] <- DataFile(path=paste0(output_path, ".gz"),
-                                                     mapping=post_qc_map)
-
-      } else {
-
-        empty_dt <- data.table::data.table(matrix(NA, 0, length(col_names(post_qc_map))))
-        data.table::setnames(empty_dt, col_names(post_qc_map))
-        object@qc_data_files[[ c(...) ]] <- DataFile(path=paste0(output_path, ".gz"),
-                                                     data=empty_dt,
-                                                     mapping=post_qc_map)
-        write_file(object@qc_data_files[[ c(...) ]], paste0(output_path, ".gz"))
-
-      }
-    }
-
-    validObject(object)
+    #
+    # # write the file
+    # ecf_path <- paste0(output_path, ".ecf")
+    # writeLines(ecf_str, ecf_path)
+    #
+    # # run EasyQC
+    # easy_qc_success <- EasyQC::EasyQC(ecf_path)
+    #
+    # # get the QC data n.b. no file is written if empty data.table so check forexistance
+    # if(!easy_qc_success) {
+    #
+    #   rlog::log_error("EasyQC failed")
+    #
+    # } else {
+    #
+    #   # save DataFile
+    #   post_qc_map <- object@mapping
+    #   map_names <- col_names(object@mapping)
+    #   easy_qc_names <- c("CALL_RATE","AMBIGUOUS","STRAND","cptid")
+    #   post_qc_map <- turn_on(post_qc_map, unique(c(map_names, easy_qc_names)))
+    #   rlog::log_info(glue::glue("EasyQC output DataFiles mapping set to: {paste0(col_names(post_qc_map), collapse=',')}"))
+    #
+    #   if(file.exists(paste0(output_path, ".gz"))) {
+    #
+    #     object@qc_data_files[[ c(...) ]] <- DataFile(path=paste0(output_path, ".gz"),
+    #                                                  mapping=post_qc_map)
+    #
+    #   } else {
+    #
+    #     empty_dt <- data.table::data.table(matrix(NA, 0, length(col_names(post_qc_map))))
+    #     data.table::setnames(empty_dt, col_names(post_qc_map))
+    #     object@qc_data_files[[ c(...) ]] <- DataFile(path=paste0(output_path, ".gz"),
+    #                                                  data=empty_dt,
+    #                                                  mapping=post_qc_map)
+    #     write_file(object@qc_data_files[[ c(...) ]], paste0(output_path, ".gz"))
+    #
+    #   }
+    # }
+    #
+    # validObject(object)
     rlog::log_info("Finished EASYQC")
     return(object)
   }

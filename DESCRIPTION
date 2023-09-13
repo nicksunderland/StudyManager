@@ -12,10 +12,14 @@ RoxygenNote: 7.2.3
 Imports: 
     checkmate,
     data.table,
+    dplyr,
     EasyQC,
+    forcats,
+    ggplot2,
     methods,
     rlang,
-    rlog
+    rlog,
+    tibble
 Collate: 
     'class_col_map.R'
     'class_datafile.R'

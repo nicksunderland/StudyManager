@@ -1,36 +1,14 @@
 load_all()
 
-# map=StudyManager::ColumnMapping
-# map<-turn_on(map,c("LOG_ODDS"),rest.off=FALSE)
 d <- DataFile(
   path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.females.allcause.gz"
 )
-
 d2 <- DataFile(
   path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.males.allcause.gz"
 )
 
-df_list=list("F"=d,"M"=d2)
+d_list <- extract(list("F"=d,"M"=d2))
 
-foo<- extract(df_list)
-
-
-get_raw_col_names(d)
-
-
-d <- extract(d)
-#
-# head(d@data)
-# d <- free(d)
-# head(d@data)
-# #
-# #
-# #
-# ref_data_file <- DataFile(
-#   path = "/Users/nicholassunderland/Downloads/genome_reference/ref_justX_1000GP_Phase3_maf_biallelic.gz",
-#   mapping = turn_on(StudyManager::ColumnMapping, c("CPTID","SNP","CHR","BP","MARKER_TYPE","A*","OTHER_ALLELE","EUR_FRQ"))
-# )
-# ref_data_file <-extract(ref_data_file)
 
 s <- GWASsumstats(dir = "/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph",
                   pre_qc_dir = "pre_qc",
@@ -45,11 +23,16 @@ s <- GWASsumstats(dir = "/Users/nicholassunderland/Downloads/hermes_progression/
                       "autosomes" = ".*allcause_death_post_qc.tsv"
                     )
                   ),
-                  reference_path = "/Users/nicholassunderland/Downloads/genome_reference/ref_justX_1000GP_Phase3_maf_biallelic.gz"
+                  ref_path = "/Users/nicholassunderland/Downloads/genome_reference/ref_justX_1000GP_Phase3_maf_biallelic.gz"
 )
 
 #### EasyQC
 s <- run_qc(s)
+
+
+
+
+
 
 # plots the manhattan plot
 run_qc_plots(s, "/Users/nicholassunderland/Downloads/figures", "allcause_death")
@@ -106,5 +89,31 @@ run_qc_plots(s, "/Users/nicholassunderland/Downloads/figures", "allcause_death")
 # str(nested_list)
 
 
+#
+# load_all()
+#
+#
+# d <- DataFile(
+#   path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.females.allcause.gz"
+# )
+#
+# d2 <- DataFile(
+#   path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.males.allcause.gz"
+# )
+#
+# df_list=list("F"=d,"M"=d2)
+#
+# d_single <- extract(d)
+#
+# d_list <- extract(df_list)
+#
+# head(get_data(d_single))
+# head(get_data(d_list))
+#
+# d_single <- free(d_single)
+# d_list <- free(d_list)
+#
+# head(get_data(d_single))
+# head(get_data(d_list))
 
 

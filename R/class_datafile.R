@@ -46,13 +46,19 @@ setValidity(
   }
 )
 
-setGeneric("get_raw_col_names", function(x) standardGeneric("get_raw_col_names"))
+# see generic set in 'ColMap' class
+# setGeneric("col_names", function(x, ...) standardGeneric("col_names"))
 setMethod(
-  f = "get_raw_col_names",
+  f = "col_names",
   signature = "DataFile",
-  definition = function(x){
+  definition = function(x) {
 
-    if(!all(is.na(x@path))) {
+    # data was directly inserted to the data slot, or we've been modifying it
+    if(ncol(x@data) > 0) {
+
+      raw_cols = colnames(x@data)
+
+    } else if(!all(is.na(x@path))) {
 
       header <- c()
       for(p in x@path) {
@@ -61,20 +67,23 @@ setMethod(
         header <- unique(c(header, colnames(h)))
 
       }
-      return( header )
+      raw_cols = header
 
-    # data was directly inserted to the data slot, without pathname
-    } else if(ncol(x@data) > 0) {
-
-        return( colnames(x@data) )
-
-    # object validity (data and/or path) should stop us getting here
+      # object validity (data and/or path) should stop us getting here
     } else {
 
-      rlog::log_error("ERROR: get_raw_col_names() ... shouldn't be here")
+      rlog::log_error("ERROR: 'col_names(signature: DataFile)' ... shouldn't be here")
       stop()
 
     }
+
+    # use the 'ColMap' col_names signature method
+    active_col_map <- col_names(x@mapping,
+                                input_col_names=raw_cols,
+                                only.active=TRUE,
+                                ignore.case=TRUE)
+
+    return(active_col_map)
   }
 )
 
@@ -83,7 +92,16 @@ setMethod("path", "DataFile", function(x) x@path)
 
 setGeneric("path<-", function(x, value) standardGeneric("path<-"))
 setMethod("path<-", "DataFile", function(x, value) {
+
   x@path <- value
+
+  if(data_exists(x)) {
+
+    warning("DataFile path changed with existing data extracted -> existing data cleared, you should re-extract")
+    x <- free(x)
+
+  }
+
   validObject(x)
   x
 })
@@ -96,9 +114,16 @@ setMethod("mapping", "DataFile", function(x) x@mapping)
 
 setGeneric("mapping<-", function(x, value) standardGeneric("mapping<-"))
 setMethod("mapping<-", "DataFile", function(x, value) {
+
   x@mapping <- value
-  warning("DataFile mapping changed, existing data cleared, you should re-extract")
-  x <- free(x)
+
+  if(data_exists(x)) {
+
+    warning("DataFile mapping changed with existing data extracted -> existing data cleared, you should re-extract")
+    x <- free(x)
+
+  }
+
   validObject(x)
   x
 })
@@ -112,23 +137,27 @@ setMethod(
     if(ncol(x@data) > 0) {
       return(TRUE)
     } else {
-      warning("Data empty - do you need to call `extract()` first?")
       return(FALSE)
     }
 
   }
 )
 
+#' @title get_data
+#' @param x a DataFile object
+#' @return a data.table
+#' @rdname get_data
+#' @export
 setGeneric("get_data", function(x) standardGeneric("get_data"))
+#' @rdname get_data
 setMethod(
   f = "get_data",
   signature = "DataFile",
   definition = function(x){
 
-    raw_cols <- get_raw_col_names(x)
-    active_col_map <- col_names(x@mapping, input_col_names=raw_cols)
-
     if(data_exists(x)) {
+
+      active_col_map <- col_names(x)
 
       # rename columns using the mapping vector
       data.table::setnames(x@data, unname(active_col_map), names(active_col_map), skip_absent=TRUE)
@@ -153,6 +182,7 @@ setMethod(
 
     } else {
 
+      warning("Data empty - do you need to call `extract()` first?")
       return(NULL)
 
     }
@@ -177,7 +207,13 @@ setMethod(
 
       data.table::fwrite(x@data, file=file_path, append=append, sep=sep, ...)
 
+    } else {
+
+      warning("Trying to write from empty DataFile - do you need to call `extract()` first?")
+
     }
+
+    return(NULL)
   }
 )
 
@@ -190,56 +226,52 @@ setMethod("free", "DataFile", function(x) {
   x
 })
 
-setGeneric("extract", function(data_file_list, ...) standardGeneric("extract"))
+setGeneric("extract", function(x, ...) standardGeneric("extract"))
 
 setMethod(
   f = "extract",
   signature = "list",
-  definition = function(data_file_list, merge_col=NULL) {
+  definition = function(x, merge_col="DATAFILE") {
 
-    stopifnot(length(data_file_list) > 0)
+    stopifnot(length(x) > 0)
 
-    names = names(data_file_list)
+    names = names(x)
     if(is.null(names)) {
-        names = as.character(seq_along(data_file_list))
+        names = as.character(seq_along(x))
     }
 
-    rlog::log_info(glue::glue("Extract from multiple ({length(data_file_list)}) DataFiles. Concatenating: {paste0(names, collapse=', ')}"))
+    rlog::log_info(glue::glue("Extract from multiple ({length(x)}) DataFiles. Concatenating: {paste0(names, collapse=', ')}"))
 
     # for each DataFile
-    for(i in seq_along(data_file_list)) {
+    for(i in seq_along(x)) {
 
-      data_file_list[i] <- extract(data_file_list[i])
+      x[[i]] <- extract(x[[i]])
 
     }
 
-    dt_list <- lapply(data_file_list, function(y) get_data(extract(y)))
+    dt_list <- lapply(x, function(data_file) get_data(data_file))
     names(dt_list) <- names
 
-    if(!is.null(merge_col)) {
+    # update the mapping to have the merge column
+    mapping(x[[1]]) <- add_col(x = x[[i]]@mapping,
+                               col_name = merge_col,
+                               aliases = list(merge_col),
+                               col_type = "character",
+                               func = as.character,
+                               active = TRUE,
+                               overwrite = TRUE)
 
-      mapping(data_file_list[[1]]) <- add_col(x = x[[i]]@mapping,
-                                              col_name = merge_col,
-                                              aliases = list(merge_col),
-                                              col_type = "character",
-                                              func = as.character,
-                                              active = TRUE,
-                                              overwrite = TRUE)
+    set_data(x[[1]]) <- data.table::rbindlist(dt_list, idcol=merge_col)
+    print(head(x[[1]]@data))
+    print(col_names(x[[1]]@mapping))
 
-      set_data(data_file_list[[1]]) <- rbind(unlist(dt_list), idcol=merge_col)
+    rlog::log_debug(glue::glue("Data size: {nrow(x[[1]]@data)} rows by {ncol(x[[i]]@data)} cols"))
 
-    } else {
-
-      set_data(data_file_list[[1]]) <- rbind(unlist(dt_list))
-
-    }
-    rlog::log_debug(glue::glue("Data size: {nrow(data_file_list[[1]]@data)} rows by {ncol(data_file_list[[i]]@data)} cols"))
-
-    data_file_list[[1]]@path <- sapply(data_file_list, function(y) y@path)
+    x[[1]]@path <- sapply(x, function(y) y@path)
 
     # return
-    validObject(data_file_list[[1]])
-    return(data_file_list[[1]])
+    validObject(x[[1]])
+    return(x[[1]])
   }
 )
 
@@ -251,9 +283,8 @@ setMethod(
 
     rlog::log_info(glue::glue("Extract from DataFile: {basename(x@path)}"))
 
-    # active columns from the mapping
-    raw_cols <- get_raw_col_names(x)
-    active_col_map <- col_names(x@mapping, input_col_names=raw_cols)
+    # active columns
+    active_col_map <- col_names(x)
     rlog::log_debug(glue::glue("Mapping columns: {paste0(names(active_col_map),'=',active_col_map,collapse=',')}"))
 
     # non-missing cols in the datafile

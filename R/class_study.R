@@ -108,81 +108,61 @@ setMethod(
   }
 )
 
-
-setClassUnion("StudyORDataFileORlist", c("list", "DataFile", "Study"))
-setGeneric("get_data_keys", function(input_list,  prefix = NULL) standardGeneric("get_data_keys"))
+# recursion via different signatures
+setGeneric("get_data_keys", function(input, prefix=NULL) standardGeneric("get_data_keys"))
+# if 'Study' call the function on the study data_file object
+setMethod("get_data_keys", "Study", function(input, prefix = NULL) get_data_keys(input@data_files))
+# if list, i.e. the data_file object, recursively return into that list
 setMethod(
   f = "get_data_keys",
-  signature = c("StudyORDataFileORlist"),
-  definition = function(input_list, prefix = NULL) {
+  signature = "list",
+  definition = function(input, prefix = NULL) {
 
-    if(is(input_list, "Study")) {
+    result <- list()
 
-      input_list <- input_list@data_files
+    for (name in names(input)) {
 
-    }
-
-    if (is.list(input_list)) {
-
-      result <- list()
-
-      for (name in names(input_list)) {
-
-        new_prefix <- c(prefix, name)
-        result <- c(result, get_data_keys(input_list[[name]], new_prefix))
-
-      }
-      return(result)
-
-    } else {
-
-      return(list(prefix))
+      new_prefix <- c(prefix, name)
+      result <- c(result, get_data_keys(input[[name]], new_prefix))
 
     }
+    return(result)
   }
 )
+# the base case, essentially 'if(DataFile)', return the prefix (i.e. the name of the DataFile)
+setMethod("get_data_keys", "DataFile",  function(input, prefix = NULL) list(prefix))
 
-setGeneric("keys_valid", function(nested_list, ...) standardGeneric("keys_valid"))
+setGeneric("keys_valid", function(object, keys, ...) standardGeneric("keys_valid"))
 setMethod(
   f = "keys_valid",
-  signature = c("list"),
-  definition = function(nested_list, ...) {
-
-    if (!all(sapply(list(...), is.character))) {
-      stop("All arguments in '...' must be nested list keys of class 'character'")
-    }
-
-    names_vector <- c(...)
-
-    if (length(names_vector) == 0) {
-      return(TRUE)  # All names in 'names_vector' have been checked
-    }
-
-    if (!is.list(nested_list)) {
-      return(FALSE)  # 'nested_list' is not a list
-    }
-
-    # Get the next name to check from 'names_vector'
-    next_name <- names_vector[1]
-
-    # Check if the next name exists in the current list
-    if (!next_name %in% names(nested_list)) {
-      return(FALSE)  # Name doesn't exist in the list
-    }
-
-    # Find the position of the next name in the list
-    position <- which(names(nested_list) == next_name)
-
-    # Recursively check the rest of the names and nested lists
-    if (is.list(nested_list[[position]])) {
-      return(keys_valid(nested_list[[position]], names_vector[-1]))
-    } else {
-      # Check if the remaining names match the named elements
-      return(all(names_vector == names(nested_list)[position:length(names(nested_list))]))
-    }
+  signature = c("Study", "list"),
+  definition = function(object, keys){
+    test_all = all(sapply(keys, keys_valid, object=object))
+    return(test_all)
   }
 )
+setMethod(
+  f = "keys_valid",
+  signature = c("Study", "character"),
+  definition = function(object, keys, ...){
 
+    tryCatch(
+      expr = {
+        # ... more keys
+        test <- object@data_files[[ c(keys, ...) ]]
+        if(is.null(test)) {
+          stop()
+        } else {
+          return(TRUE)
+        }
+      },
+      error = function(e) {
+        rlog::log_error(glue::glue("invalid keys: c({paste0('\"', c(keys, ...), '\"', collapse=', ')}). Possible keys: {paste(get_data_keys(object), collapse=', ')}"))
+        return(FALSE)
+      }
+    )
+  }
+)
 
 setGeneric("copy_file_structure", function(file_structure) standardGeneric("copy_file_structure"))
 setMethod(
@@ -202,23 +182,23 @@ setMethod(
   }
 )
 
-
-setGeneric("get_data", function(object, ...) standardGeneric("get_data"))
-setMethod(
-  f = "get_data",
-  signature = c("Study"),
-  definition = function(object, ...) {
-
-    if(!keys_valid(object@data_files, ...)) {
-      stop("All arguments in '...' must be valid ordered keys into the `data_files` structure")
-    }
-
-    object@data_files[[ c(...) ]] <- extract( object@data_files[[ c(...) ]] )
-
-    return( file_data(object@data_files[[ c(...) ]] ))
-
-  }
-)
+#
+# setGeneric("get_data", function(object, ...) standardGeneric("get_data"))
+# setMethod(
+#   f = "get_data",
+#   signature = c("Study"),
+#   definition = function(object, ...) {
+#
+#     if(!keys_valid(object@data_files, ...)) {
+#       stop("All arguments in '...' must be valid ordered keys into the `data_files` structure")
+#     }
+#
+#     object@data_files[[ c(...) ]] <- extract( object@data_files[[ c(...) ]] )
+#
+#     return( file_data(object@data_files[[ c(...) ]] ))
+#
+#   }
+# )
 
 
 setGeneric("get_data_file", function(object, ...) standardGeneric("get_data_file"))

@@ -86,7 +86,7 @@ setMethod(
   }
 )
 
-setGeneric("col_names", function(x, input_col_names=NULL, only.active=TRUE, ignore.case=TRUE) standardGeneric("col_names"))
+setGeneric("col_names", function(x, ...) standardGeneric("col_names"))
 setMethod(
   f = "col_names",
   signature = "ColMap",
@@ -130,7 +130,7 @@ setMethod(
     } # end cycle std_columns
 
     # if requesting only active warn if not found
-    if(only.active & any(is.na(output_cols))) {
+    if(only.active & any(is.na(output_cols)) & !is.null(input_col_names)) {
 
       warning(paste0("Some active columns where not found in the input_col_names: ",
                      paste0(names(output_cols[is.na(output_cols)]), collapse=", ")))
