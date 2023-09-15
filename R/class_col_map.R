@@ -86,9 +86,12 @@ setMethod(
   }
 )
 
-setGeneric("col_names", function(x, ...) standardGeneric("col_names"))
+setGeneric("col_names", function(x) standardGeneric("col_names"))
+setMethod("col_names", "ColMap", function(x) names(col_map(x, only.active=TRUE)) )
+
+setGeneric("col_map", function(x, ...) standardGeneric("col_map"))
 setMethod(
-  f = "col_names",
+  f = "col_map",
   signature = "ColMap",
   definition = function(x, input_col_names=NULL, only.active=TRUE, ignore.case=TRUE) {
 
@@ -132,8 +135,7 @@ setMethod(
     # if requesting only active warn if not found
     if(only.active & any(is.na(output_cols)) & !is.null(input_col_names)) {
 
-      warning(paste0("Some active columns where not found in the input_col_names: ",
-                     paste0(names(output_cols[is.na(output_cols)]), collapse=", ")))
+      rlog::log_warn(glue::glue("Some active columns where not found in the input_col_names: {paste0(names(output_cols[is.na(output_cols)]), collapse=', ')}"))
 
     }
 
@@ -142,11 +144,11 @@ setMethod(
   }
 )
 
-setGeneric("add_col", function(x, col_name, aliases, col_type, func, active=TRUE, overwrite=FALSE) standardGeneric("add_col"))
+setGeneric("add_col", function(x, col_name, col_type, func, aliases=list(col_name), active=TRUE, overwrite=FALSE) standardGeneric("add_col"))
 setMethod(
   f = "add_col",
-  signature = c("ColMap", "character", "list", "character", "function", "logical", "logical"),
-  definition = function(x, col_name, aliases, col_type, func, active=TRUE, overwrite=FALSE) {
+  signature = c("ColMap", "character", "character", "function"),
+  definition = function(x, col_name, col_type, func, aliases=list(col_name), active=TRUE, overwrite=FALSE) {
 
     stopifnot("`col_name` must be a character" = is.character(col_name) & length(col_name)==1)
     stopifnot("`aliases` must be a list of characters" = is.list(aliases) & all(sapply(aliases, is.character)))

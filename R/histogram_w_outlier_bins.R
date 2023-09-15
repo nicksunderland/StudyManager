@@ -178,9 +178,9 @@ histogram_w_outlier_bins <- function(
   # plot frequency or proportion? set a default
   if (plot_frequency == TRUE) {
     plot_proportion <- FALSE
-    message(paste0(
-      "Plotting frequencies instead of proportions because ",
-      "plot_frequency = TRUE"))
+    # message(paste0(
+    #   "Plotting frequencies instead of proportions because ",
+    #   "plot_frequency = TRUE"))
   }
 
   # y label

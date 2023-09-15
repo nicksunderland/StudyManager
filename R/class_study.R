@@ -90,13 +90,13 @@ setMethod(
       # only allow one file per regex (each file should be named), or no file found
       if(length(file_path) == 0) {
 
-        warning(paste0("file regex `", file_name_regex, "` did not find any files"))
+        rlog::log_warn(glue::glue("file regex `{file_name_regex}` did not find any files"))
         return(NULL)
 
       } else if(length(file_path) > 1) {
 
-        stop(paste0("file regex must yeild one file (or no file) but found multiple using `", file_name_regex, "`: \n",
-                    paste0(file_path, collapse="\n")))
+        rlog::log_error(glue::glue("file regex must yeild one file (or no file) but found multiple using `{file_name_regex}`: \n{paste0(file_path, collapse='\n')}"))
+        stop("create_data_files() multi file regex error")
 
       } else {
 
@@ -179,55 +179,6 @@ setMethod(
       }
     }
     return(result)
-  }
-)
-
-#
-# setGeneric("get_data", function(object, ...) standardGeneric("get_data"))
-# setMethod(
-#   f = "get_data",
-#   signature = c("Study"),
-#   definition = function(object, ...) {
-#
-#     if(!keys_valid(object@data_files, ...)) {
-#       stop("All arguments in '...' must be valid ordered keys into the `data_files` structure")
-#     }
-#
-#     object@data_files[[ c(...) ]] <- extract( object@data_files[[ c(...) ]] )
-#
-#     return( file_data(object@data_files[[ c(...) ]] ))
-#
-#   }
-# )
-
-
-setGeneric("get_data_file", function(object, ...) standardGeneric("get_data_file"))
-setMethod(
-  f = "get_data_file",
-  signature = c("Study"),
-  definition = function(object, ...) {
-
-    if(!keys_valid(object@data_files, ...)) {
-      stop("All arguments in '...' must be valid ordered keys into the `data_files` structure")
-    }
-
-    return( object@data_files[[ c(...) ]] )
-
-  }
-)
-
-setGeneric("get_qc_data_file", function(object, ...) standardGeneric("get_qc_data_file"))
-setMethod(
-  f = "get_qc_data_file",
-  signature = c("Study"),
-  definition = function(object, ...) {
-
-    if(!keys_valid(object@qc_data_files, ...)) {
-      stop("All arguments in '...' must be valid ordered keys into the `qc_data_files` structure")
-    }
-
-    return( object@qc_data_files[[ c(...) ]] )
-
   }
 )
 

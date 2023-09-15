@@ -29,59 +29,48 @@ setValidity(
   Class = "DataFile",
   method = function(object) {
 
-    path_missing = all(is.na(object@path))
-    data_missing = ncol(object@data) == 0
-
-    if(!path_missing) {
-      stopifnot("`path` must be valid file path" = all(file.exists(object@path)))
-    }
-
-    if(!path_missing & !data_missing) {
-        stopifnot("`path` must be a valid and writable file path if `data` present" =
-                    all(sapply(object@path, checkmate::test_path_for_output, overwrite=TRUE)))
-    }
-
+    stopifnot("`path`(s) must be writable file path(s)"
+              = all(sapply(object@path, checkmate::test_path_for_output, overwrite=TRUE)))
     stopifnot("`data` must be a data.table" = data.table::is.data.table(object@data))
-    stopifnot("Mapping must be a valid ColMap object" = inherits(object@mapping, "ColMap"))
+    stopifnot("`mapping` must be a valid ColMap object" = inherits(object@mapping, "ColMap"))
+
   }
 )
 
 # see generic set in 'ColMap' class
-# setGeneric("col_names", function(x, ...) standardGeneric("col_names"))
+# setGeneric("col_names", function(x) standardGeneric("col_names"))
+setMethod("col_names", "DataFile", function(x) names(col_map(x@mapping, only.active=TRUE)) )
+
+# see generic set in 'ColMap' class
+# setGeneric("col_map", function(x, ...) standardGeneric("col_map"))
 setMethod(
-  f = "col_names",
+  f = "col_map",
   signature = "DataFile",
   definition = function(x) {
 
-    # data was directly inserted to the data slot, or we've been modifying it
-    if(ncol(x@data) > 0) {
+    # get file header
+    header <- c()
+    for(p in x@path) {
 
-      raw_cols = colnames(x@data)
+      h <- data.table::fread(p, nrows=0)
+      cols <- colnames(h)
 
-    } else if(!all(is.na(x@path))) {
+      if(any(duplicated(cols))) {
 
-      header <- c()
-      for(p in x@path) {
-
-        h <- data.table::fread(p, nrows=0)
-        header <- unique(c(header, colnames(h)))
-
+        rlog::log_fatal(glue::glue("Duplicate column names [{paste0(cols[duplicated(cols)],collapse=',')}] found in {basename(x@path)}"))
+        stop()
       }
-      raw_cols = header
 
-      # object validity (data and/or path) should stop us getting here
-    } else {
-
-      rlog::log_error("ERROR: 'col_names(signature: DataFile)' ... shouldn't be here")
-      stop()
+      header <- unique(c(header, cols))
 
     }
+    raw_cols = header
 
     # use the 'ColMap' col_names signature method
-    active_col_map <- col_names(x@mapping,
-                                input_col_names=raw_cols,
-                                only.active=TRUE,
-                                ignore.case=TRUE)
+    active_col_map <- col_map(x@mapping,
+                              input_col_names=raw_cols,
+                              only.active=TRUE,
+                              ignore.case=TRUE)
 
     return(active_col_map)
   }
@@ -111,8 +100,26 @@ setMethod("file_name", "DataFile", function(x) basename(x@path))
 
 setGeneric("mapping", function(x) standardGeneric("mapping"))
 setMethod("mapping", "DataFile", function(x) x@mapping)
+setMethod("mapping", "list", function(x) lapply(x, mapping))
 
 setGeneric("mapping<-", function(x, value) standardGeneric("mapping<-"))
+setMethod(
+  f = "mapping<-",
+  signature = "list",
+  definition = function(x, value) {
+
+    stopifnot("mapping value must be length==1 or length==length(x)" = length(value)==1 | length(value)==length(x))
+
+    value <- rep(as.list(value), length.out=length(x))
+
+    for(i in seq_along(x)) {
+
+      mapping(x[[i]]) <- value[[i]]
+
+    }
+    return(x)
+  }
+)
 setMethod("mapping<-", "DataFile", function(x, value) {
 
   x@mapping <- value
@@ -148,37 +155,42 @@ setMethod(
 #' @return a data.table
 #' @rdname get_data
 #' @export
-setGeneric("get_data", function(x) standardGeneric("get_data"))
+setGeneric("get_data", function(x, cols=NULL) standardGeneric("get_data"))
 #' @rdname get_data
 setMethod(
   f = "get_data",
   signature = "DataFile",
-  definition = function(x){
+  definition = function(x, cols=NULL){
 
     if(data_exists(x)) {
 
-      active_col_map <- col_names(x)
-
-      # rename columns using the mapping vector
-      data.table::setnames(x@data, unname(active_col_map), names(active_col_map), skip_absent=TRUE)
+      # cols to return, default all
+      active_cols <- col_names(x)
 
       # Insert col_fill columns for any missing entries in mapping vector
-      missing_cols <- setdiff(names(active_col_map), names(x@data))
+      current_cols <- colnames(x@data)
+      missing_cols <- setdiff(active_cols, current_cols)
+
       for(col in missing_cols) {
 
-          x@data[, (col) := col_fill(x@mapping)]
+        x@data[, (col) := col_fill(x@mapping)]
 
       }
 
-      # drop the others
-      unwanted_cols <- setdiff(names(x@data), names(active_col_map))
-      if(length(unwanted_cols) > 0) {
+      # optional col select
+      if(!is.null(cols)) {
 
-        x@data[, (unwanted_cols) := NULL]
+        stopifnot("`cols` must be a character vector of column names" = all(sapply(cols, is.character)))
+
+        new_dt <- x@data[, ..cols]
+
+        return(new_dt)
+
+      } else {
+
+        return(x@data)
 
       }
-
-      return(x@data)
 
     } else {
 
@@ -197,27 +209,32 @@ setMethod("set_data<-", "DataFile", function(x, value) {
 })
 
 
-setGeneric("write_file", function(x, file_path, append=FALSE, sep="\t", ...) standardGeneric("write_file"))
+setGeneric("write_file", function(x, file_path, overwrite=FALSE, append=FALSE, sep="\t", ...) standardGeneric("write_file"))
 setMethod(
   f = "write_file",
   signature = c("DataFile", "character"),
-  definition = function(x, file_path, append=FALSE, sep="\t", ...) {
+  definition = function(x, file_path, overwrite=FALSE, append=FALSE, sep="\t", ...) {
 
-    if(data_exists(x)) {
+    if(!data_exists(x)) {
 
-      data.table::fwrite(x@data, file=file_path, append=append, sep=sep, ...)
-
-    } else {
-
-      warning("Trying to write from empty DataFile - do you need to call `extract()` first?")
+      rlog::log_warn("Trying to write from empty DataFile - do you need to call `extract()` first?")
+      return(NULL)
 
     }
 
-    return(NULL)
+    if(!checkmate::test_path_for_output(file_path, overwrite=overwrite)) {
+
+      rlog::log_error("If file_path exists you must confirm overwrite == TRUE ")
+      stop()
+
+    }
+
+    data.table::fwrite(x@data, file=file_path, append=append, sep=sep, ...)
   }
 )
 
 setGeneric("free", function(x) standardGeneric("free"))
+setMethod("free", "list", function(x) lapply(x, free))
 setMethod("free", "DataFile", function(x) {
   if(data_exists(x)) {
     x@data[, names(x@data) := NULL]
@@ -226,12 +243,87 @@ setMethod("free", "DataFile", function(x) {
   x
 })
 
+
+
+
+
+
+
+
+
+
 setGeneric("extract", function(x, ...) standardGeneric("extract"))
+setMethod(
+  f = "extract",
+  signature = "DataFile",
+  definition = function(x) {
+
+    if(length(x@path) > 1) {
+
+      rlog::log_warn(glue::glue("Multiple file paths set, calling extract on all and merging: {paste0(basename(x@path),collapse=', ')}"))
+
+      dfile_list <- lapply(x@path, function(p, m) DataFile(path=p, mapping=m), m=x@mapping)
+
+      x <- extract(dfile_list) # different signature of 'list'
+
+      return(x)
+
+    } else {
+
+      rlog::log_info(glue::glue("Extract from DataFile: ../{basename(dirname(x@path))}/{basename(x@path)}"))
+
+      # active columns
+      active_col_map <- col_map(x)
+      rlog::log_debug(glue::glue("Active mapped columns: {paste0(names(active_col_map),'=',active_col_map,collapse=',')}"))
+
+      # non-missing cols in the datafile
+      is_missing <- is.na(active_col_map)
+      missing_cols <- active_col_map[is_missing]
+      non_missing_cols <- active_col_map[!is_missing]
+      active_col_map[is_missing] <- names(active_col_map)[is_missing]
+
+      # column types
+      col_type <- col_types( x@mapping )[!is_missing]
+      raw_name_and_type <- stats::setNames(col_type, active_col_map[names(col_type)])
+
+      # potential custom functions
+      funcs <- col_type_funcs( x@mapping )[!is_missing]
+
+      # read the data (only store non-missing, as when we request data we'll fill it in later)
+      rlog::log_info(glue::glue("Reading file..."))
+      x@data <- data.table::fread(x@path, select=raw_name_and_type)
+      rlog::log_debug(glue::glue("Finished reading file: {nrow(x@data)} rows by {ncol(x@data)} cols"))
+
+      # add missing
+      if(length(missing_cols) > 0) {
+
+        rlog::log_debug(glue::glue("Missing mapping columns: {paste0(names(missing_cols),'=',missing_cols, collapse=',')}. These will be filled with {col_fill(x@mapping)}"))
+
+        for(std_name in names(missing_cols)) {
+
+          x@data[, (std_name) := col_fill(x@mapping)]
+
+        }
+
+      }
+
+      # set standard names
+      data.table::setnames(x@data, active_col_map, names(active_col_map))
+
+      # enforce column types
+      rlog::log_debug(glue::glue("Ensuring column types:  {paste0(names(col_type),'=',col_type,collapse=',')}"))
+      x@data[ , names(funcs) := Map(function(f, x) f(x), funcs, .SD), .SDcols=names(funcs)]
+    }
+
+    validObject(x)
+    return(x)
+  }
+)
 
 setMethod(
   f = "extract",
   signature = "list",
-  definition = function(x, merge_col="DATAFILE") {
+  definition = function(x, merge_col="JOIN") {
 
     stopifnot(length(x) > 0)
 
@@ -245,83 +337,42 @@ setMethod(
     # for each DataFile
     for(i in seq_along(x)) {
 
-      x[[i]] <- extract(x[[i]])
+      x[[i]] <- extract( x[[i]] )
 
     }
 
-    dt_list <- lapply(x, function(data_file) get_data(data_file))
-    names(dt_list) <- names
+    # ?previous nested merges
+    num_merged <- sum(grepl(merge_col, colnames(x[[1]]@data)))
+    if(num_merged > 0) {
+
+      merge_col <- paste0(merge_col, "_", as.character(num_merged))
+
+    }
 
     # update the mapping to have the merge column
-    mapping(x[[1]]) <- add_col(x = x[[i]]@mapping,
-                               col_name = merge_col,
-                               aliases = list(merge_col),
-                               col_type = "character",
-                               func = as.character,
-                               active = TRUE,
-                               overwrite = TRUE)
+    new_map <- add_col(x = x[[1]]@mapping,
+                       col_name = merge_col,
+                       aliases = list(merge_col),
+                       col_type = "character",
+                       func = as.character,
+                       active = TRUE,
+                       overwrite = TRUE)
 
-    set_data(x[[1]]) <- data.table::rbindlist(dt_list, idcol=merge_col)
-    print(head(x[[1]]@data))
-    print(col_names(x[[1]]@mapping))
+    # create a merged datafile and overwrite x
+    x <- DataFile(path = c(sapply(x, function(y) y@path)),
+                  data = data.table::rbindlist(lapply(x, function(x) x@data), idcol=merge_col),
+                  mapping = new_map)
 
-    rlog::log_debug(glue::glue("Data size: {nrow(x[[1]]@data)} rows by {ncol(x[[i]]@data)} cols"))
-
-    x[[1]]@path <- sapply(x, function(y) y@path)
+    rlog::log_debug(glue::glue("Data size: {nrow(x@data)} rows by {ncol(x@data)} cols"))
 
     # return
-    validObject(x[[1]])
-    return(x[[1]])
-  }
-)
-
-
-setMethod(
-  f = "extract",
-  signature = "DataFile",
-  definition = function(x) {
-
-    rlog::log_info(glue::glue("Extract from DataFile: {basename(x@path)}"))
-
-    # active columns
-    active_col_map <- col_names(x)
-    rlog::log_debug(glue::glue("Mapping columns: {paste0(names(active_col_map),'=',active_col_map,collapse=',')}"))
-
-    # non-missing cols in the datafile
-    missing_cols <- is.na(active_col_map)
-    non_missing_cols <- active_col_map[!missing_cols]
-
-    if(any(missing_cols)) {
-
-      rlog::log_debug(glue::glue("Missing mapping columns: {paste0(names(active_col_map[missing_cols]),'=',active_col_map[missing_cols], collapse=',')}. These will be added when calling `get_data()`}"))
-    }
-
-    # read the data (only store non-missing, as when we request data we'll fill it in later)
-    x@data <- data.table::fread(x@path, select=unname(non_missing_cols))
-    rlog::log_debug(glue::glue("Data file {basename(x@path)} size: {nrow(x@data)} rows by {ncol(x@data)} cols"))
-    rlog::log_debug(glue::glue("Data file {basename(x@path)} cols: {paste0(colnames(x@data), collapse=',')}"))
-
-    # renames
-    data.table::setnames(x@data, active_col_map, names(active_col_map), skip_absent=TRUE)
-    rlog::log_debug(glue::glue("Renamed extracted columns to: {paste0(names(x@data),collapse=',')}"))
-
-    # get the column type function
-    col_type_check_funcs <- col_type_funcs(mapping(x))
-    col_type_str <- col_types(mapping(x))
-    rlog::log_debug(glue::glue("Ensuring column types: {paste0(names(col_type_str),'=',col_type_str,collapse=',')}"))
-
-    # enforce function on each column
-    for(j in seq_along(col_type_check_funcs)) {
-
-      col_name <- names(col_type_check_funcs)[j]
-      x@data[, (col_name) := col_type_check_funcs[[j]](get(col_name))]
-
-    }
-
     validObject(x)
     return(x)
   }
 )
+
+
+
 
 
 

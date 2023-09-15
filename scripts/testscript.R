@@ -1,14 +1,16 @@
 load_all()
 
-d <- DataFile(
-  path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.females.allcause.gz"
-)
-d2 <- DataFile(
-  path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.males.allcause.gz"
-)
-
-d_list <- extract(list("F"=d,"M"=d2))
-
+# d1 <- DataFile(
+#   path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.females.allcause.gz"
+# )
+#
+# d1@mapping <- set_active(d1@mapping, c("SIGNED_SUMSTAT"), rest.off = F)
+#
+# d1 <- extract( d1 )
+#
+# head( d1@data )
+#
+# foo <- get_data( d1 )
 
 s <- GWASsumstats(dir = "/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph",
                   pre_qc_dir = "pre_qc",
@@ -28,14 +30,11 @@ s <- GWASsumstats(dir = "/Users/nicholassunderland/Downloads/hermes_progression/
 
 #### EasyQC
 s <- run_qc(s)
-
-
-
-
-
-
-# plots the manhattan plot
+#
+# #### QC plots
+load_all()
 run_qc_plots(s, "/Users/nicholassunderland/Downloads/figures", "allcause_death")
+#
 
 
 
