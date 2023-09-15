@@ -1,18 +1,6 @@
 load_all()
 
-# d1 <- DataFile(
-#   path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.females.allcause.gz"
-# )
-#
-# d1@mapping <- set_active(d1@mapping, c("SIGNED_SUMSTAT"), rest.off = F)
-#
-# d1 <- extract( d1 )
-#
-# head( d1@data )
-#
-# foo <- get_data( d1 )
-
-s <- GWASsumstats(dir = "/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph",
+s <- GWASsumstats(dir = "/Users/xx20081/Downloads/bioshift_triumph",
                   pre_qc_dir = "pre_qc",
                   post_qc_dir = "post_qc",
                   file_structure = list(
@@ -25,19 +13,31 @@ s <- GWASsumstats(dir = "/Users/nicholassunderland/Downloads/hermes_progression/
                       "autosomes" = ".*allcause_death_post_qc.tsv"
                     )
                   ),
-                  ref_path = "/Users/nicholassunderland/Downloads/genome_reference/ref_justX_1000GP_Phase3_maf_biallelic.gz"
+                  ref_path = "/Users/xx20081/Downloads/genome_reference/ref_justX_1000GP_Phase3_maf_biallelic.gz"
 )
 
 #### EasyQC
 s <- run_qc(s)
 #
 # #### QC plots
-load_all()
-run_qc_plots(s, "/Users/nicholassunderland/Downloads/figures", "allcause_death")
+run_qc_plots(s, "/Users/xx20081/Downloads/figures", "allcause_death")
 #
 
 
 
+
+
+# d1 <- DataFile(
+#   path="/Users/nicholassunderland/Downloads/hermes_progression/bioshift_triumph/pre_qc/bioshift_triumph.females.allcause.gz"
+# )
+#
+# d1@mapping <- set_active(d1@mapping, c("SIGNED_SUMSTAT"), rest.off = F)
+#
+# d1 <- extract( d1 )
+#
+# head( d1@data )
+#
+# foo <- get_data( d1 )
 
 
 

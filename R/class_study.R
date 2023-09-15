@@ -27,10 +27,20 @@ Study <- setClass(
     post_qc_dir = "post_qc",
     pmid = integer(),
     file_structure = list(),
-    mapping = StudyManager:::ColumnMapping,
+    mapping = NULL, #StudyManager:::ColumnMapping,
     data_files = list(),
     qc_data_files = list()
   )
+)
+
+setValidity(
+  Class = "Study",
+  method = function(object) {
+
+    stopifnot("`dir` must be a valid directory path" = dir.exists(object@dir))
+    # print("TODO: write validitiy for Study")
+
+  }
 )
 
 setMethod(
@@ -40,6 +50,7 @@ setMethod(
     .Object <- callNextMethod(.Object, ...)
     .Object@data_files <- create_data_files(.Object)
     .Object@qc_data_files <- copy_file_structure(.Object@data_files)
+    validObject(.Object)
     return(.Object)
   }
 )

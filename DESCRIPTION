@@ -13,7 +13,6 @@ Imports:
     checkmate,
     data.table,
     dplyr,
-    EasyQC,
     forcats,
     ggplot2,
     ggrepel,
@@ -23,13 +22,16 @@ Imports:
     rlog,
     tibble,
     wesanderson
+Remotes:
+    github::winkusch/EasyX
+Depends: 
+    R (>= 2.10)
+LazyData: true
 Collate: 
-    'histogram_w_outlier_bins.R'
     'class_col_map.R'
+    'data.R'
     'class_datafile.R'
     'class_study.R'
     'class_gwas_sumstats.R'
     'class_studycorpus.R'
-Depends: 
-    R (>= 2.10)
-LazyData: true
+    'histogram_w_outlier_bins.R'

@@ -10,6 +10,7 @@
 #' @importFrom rlang :=
 #' @importFrom checkmate test_path_for_output
 #' @importFrom data.table data.table fread fwrite set is.data.table
+#' @include data.R
 #'
 DataFile <- setClass(
   Class = "DataFile",
@@ -21,8 +22,20 @@ DataFile <- setClass(
   prototype = list(
     path = NA_character_,
     data = data.table::data.table(NULL),
-    mapping = StudyManager:::ColumnMapping
+    mapping = NULL
   )
+)
+
+setMethod(
+  f = "initialize",
+  signature = "DataFile",
+  definition = function(.Object, path=NA_character_, data=data.table::data.table(NULL), mapping=StudyManager::base_column_mapping) {
+    .Object@path <- path
+    .Object@data <- data
+    .Object@mapping <- mapping
+    validObject(.Object)
+    return(.Object)
+  }
 )
 
 setValidity(
@@ -290,7 +303,7 @@ setMethod(
       funcs <- col_type_funcs( x@mapping )[!is_missing]
 
       # read the data (only store non-missing, as when we request data we'll fill it in later)
-      rlog::log_info(glue::glue("Reading file..."))
+      rlog::log_debug(glue::glue("Reading file..."))
       x@data <- data.table::fread(x@path, select=raw_name_and_type)
       rlog::log_debug(glue::glue("Finished reading file: {nrow(x@data)} rows by {ncol(x@data)} cols"))
 

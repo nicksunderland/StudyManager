@@ -112,7 +112,7 @@ for(name in unique(map$Corrected)) {
 
 }
 
-ColumnMapping = ColMap(active = l, aliases = a, col_types = t, funcs = f)
+base_column_mapping = ColMap(active = l, aliases = a, col_types = t, funcs = f)
 
-usethis::use_data(ColumnMapping,internal = T, overwrite=TRUE)
+usethis::use_data(base_column_mapping, internal = F, overwrite=TRUE)
 

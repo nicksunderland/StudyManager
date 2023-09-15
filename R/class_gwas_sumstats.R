@@ -5,6 +5,7 @@
 #' @return object
 #' @export
 #' @importFrom methods callNextMethod
+#' @include class_study.R
 #'
 GWASsumstats <- setClass(
   Class = "GWASsumstats",
@@ -31,7 +32,7 @@ GWASsumstats <- setClass(
     qc_freq_diff_threshold = 0.2,
     ref_path = character(),
     ref_data_file = NULL,
-    mapping = StudyManager:::ColumnMapping
+    mapping = NULL #StudyManager:::ColumnMapping
   )
 )
 
@@ -47,20 +48,19 @@ setMethod(
   signature = "GWASsumstats",
   definition = function(.Object, ref_path,
                                  ref_data_file = NULL,
-                                 mapping = StudyManager::ColumnMapping, ...) {
-
-    # required ref cols
-    ref_map <- set_active(mapping, c("cptid","SNP","CHR","BP","MARKER_TYPE","A0","OTHER_ALLELE","EUR_FRQ"))
+                                 mapping = StudyManager::base_column_mapping,
+                                 ...) {
 
     # create the ref data file
     .Object@ref_path <- ref_path
-    .Object@ref_data_file <- DataFile(path=.Object@ref_path, mapping=ref_map)
+    ref_map <- set_active(mapping, c("cptid","SNP","CHR","BP","MARKER_TYPE","A0","OTHER_ALLELE","EUR_FRQ"))
+    .Object@ref_data_file <- DataFile(path=ref_path, mapping=ref_map)
 
     # required gwas cols, set mapping back to these
     .Object@mapping <- set_active(mapping, c("SNP","SE","P","N_CAS","N","INFO","FRQ","CHR","BP","BETA","EFFECT_ALLELE","OTHER_ALLELE","STRAND"))
 
     # initialise the rest
-    .Object <- callNextMethod(.Object, ...)
+    .Object <- callNextMethod(.Object, ...) # sets mapping in here
     validObject(.Object)
     return(.Object)
   }
@@ -303,7 +303,7 @@ setMethod(
     writeLines(ecf_str, ecf_path)
 
     # run EasyQC
-    easy_qc_success <- EasyQC::EasyQC(ecf_path)
+    easy_qc_success <- EasyX::EasyX(ecf_path)
 
     # clean up
     unlink(input_path)
@@ -757,8 +757,6 @@ setMethod(
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank()
       )
-
-
 
     # save plot
     ggplot2::ggsave(plot=plot, filename=file_path, device="png", bg="white", height=15, width=35, units="cm")
