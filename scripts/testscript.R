@@ -1,6 +1,30 @@
 load_all()
 
-s <- GWASsumstats(dir = "/Users/xx20081/Downloads/bioshift_triumph",
+corpus <- StudyCorpus(corpus_dir = "/Users/xx20081/Downloads/hermes_progression",
+                      study_type = "GWASsumstats",
+                      ref_path = "/Users/xx20081/Downloads/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz",
+                      file_structure = list(
+                        "allcause_death" = list(
+                          "autosomes" = "(?i)^(?!.*(?:fe)?male).*allcause.*",
+                          "xchr_male" = "(?i)^(?=.*allcause)(?=.*male)(?!.*female).*",
+                          "xchr_female" = "(?i)^(?=.*allcause)(?=.*female).*"
+                        ),
+                        "composite_1" = list(
+                          "autosomes" = ".*allcause_death_post_qc.tsv"
+                        )
+                      ))
+
+run_qc(corpus)
+
+run_qc_plots(corpus, "/Users/xx20081/Downloads/figures")
+
+
+
+
+
+
+
+s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/bioshift_triumph",
                   pre_qc_dir = "pre_qc",
                   post_qc_dir = "post_qc",
                   file_structure = list(
@@ -13,7 +37,7 @@ s <- GWASsumstats(dir = "/Users/xx20081/Downloads/bioshift_triumph",
                       "autosomes" = ".*allcause_death_post_qc.tsv"
                     )
                   ),
-                  ref_path = "/Users/xx20081/Downloads/genome_reference/ref_justX_1000GP_Phase3_maf_biallelic.gz"
+                  ref_path = "/Users/xx20081/Downloads/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz"
 )
 
 #### EasyQC
@@ -22,6 +46,10 @@ s <- run_qc(s)
 # #### QC plots
 run_qc_plots(s, "/Users/xx20081/Downloads/figures", "allcause_death")
 #
+
+
+
+
 
 
 
@@ -115,4 +143,12 @@ run_qc_plots(s, "/Users/xx20081/Downloads/figures", "allcause_death")
 # head(get_data(d_single))
 # head(get_data(d_list))
 
+# n=100000
+# s@data_files$allcause_death$xchr_male <- extract( s@data_files$allcause_death$xchr_male )
+# dt = head(s@data_files$allcause_death$xchr_male@data, n=n) |>
+#   mutate(CHR_FCT = "autosomes",
+#          QC_STATUS = c(rep("PRE-QC",n/2),rep("POST-QC",n/2)),
+#          FRQ_DIFF_FCT = sample(c("Testing","3ds","fds"),n,replace=TRUE),
+#          INFO = runif(n),
+#          EUR_FRQ = runif(n))
 

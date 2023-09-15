@@ -15,7 +15,6 @@ Study <- setClass(
     dir = "character",
     pre_qc_dir = "character",
     post_qc_dir = "character",
-    pmid = "integer",
     file_structure = "list",
     mapping = "ColMap",
     data_files = "list",
@@ -25,42 +24,54 @@ Study <- setClass(
     dir = character(),
     pre_qc_dir = "pre_qc",
     post_qc_dir = "post_qc",
-    pmid = integer(),
     file_structure = list(),
-    mapping = NULL, #StudyManager:::ColumnMapping,
+    mapping = NULL,
     data_files = list(),
     qc_data_files = list()
   )
 )
 
-setValidity(
-  Class = "Study",
-  method = function(object) {
-
-    stopifnot("`dir` must be a valid directory path" = dir.exists(object@dir))
-    # print("TODO: write validitiy for Study")
-
-  }
-)
-
 setMethod(
   f = "initialize",
   signature = "Study",
-  definition = function(.Object, ...) {
+  definition = function(.Object, mapping=StudyManager::base_column_mapping, ...) {
+
+    print("init Study")
+    print(names(as.list(match.call()[-1])))
+
+    # cant seem to have default data as a slot, so set here
+    .Object@mapping <- mapping
+
+    # send the remaining to the default init method to set slots
     .Object <- callNextMethod(.Object, ...)
-    .Object@data_files <- create_data_files(.Object)
-    .Object@qc_data_files <- copy_file_structure(.Object@data_files)
+
+    # form the rest of the slots, if we are a Study or parent of a study (e.g. GWASsumstats)
+    # this is a hack to test if we are in fact a StudyCorpus, which inherits from
+    # the parents GWASsumstats etc. To test we just see if we have the slot 'corpus_dir'
+    if(!"corpus_dir" %in% slotNames(.Object)) {
+      .Object@data_files <- create_data_files(.Object)
+      .Object@qc_data_files <- copy_file_structure(.Object@data_files)
+    }
+
     validObject(.Object)
     return(.Object)
   }
 )
+
+# setValidity(
+#   Class = "Study",
+#   method = function(object) {
+#
+#     stopifnot("`dir` must be a valid directory path" = dir.exists(object@dir))
+#
+#   }
+# )
 
 setGeneric("pre_qc_data_dir", function(x) standardGeneric("pre_qc_data_dir"))
 setMethod("pre_qc_data_dir", "Study", function(x) file.path(x@dir, x@pre_qc_dir))
 
 setGeneric("post_qc_data_dir", function(x) standardGeneric("post_qc_data_dir"))
 setMethod("post_qc_data_dir", "Study", function(x) file.path(x@dir, x@post_qc_dir))
-
 
 setClassUnion("listORcharacterORmissing", c("list", "character", "missing"))
 setGeneric("create_data_files", function(object, x=NULL) standardGeneric("create_data_files"))
@@ -192,8 +203,3 @@ setMethod(
     return(result)
   }
 )
-
-
-
-
-
