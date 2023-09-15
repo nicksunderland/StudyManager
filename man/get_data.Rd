@@ -5,9 +5,9 @@
 \alias{get_data,DataFile-method}
 \title{get_data}
 \usage{
-get_data(x)
+get_data(x, cols = NULL)
 
-\S4method{get_data}{DataFile}(x)
+\S4method{get_data}{DataFile}(x, cols = NULL)
 }
 \arguments{
 \item{x}{a DataFile object}

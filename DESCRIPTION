@@ -16,17 +16,20 @@ Imports:
     EasyQC,
     forcats,
     ggplot2,
+    ggrepel,
+    glue,
     methods,
     rlang,
     rlog,
-    tibble
+    tibble,
+    wesanderson
 Collate: 
+    'histogram_w_outlier_bins.R'
     'class_col_map.R'
     'class_datafile.R'
     'class_study.R'
     'class_gwas_sumstats.R'
     'class_studycorpus.R'
-    'histogram_w_outlier_bins.R'
-LazyData: true
 Depends: 
     R (>= 2.10)
+LazyData: true

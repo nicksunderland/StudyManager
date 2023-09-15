@@ -114,4 +114,5 @@ for(name in unique(map$Corrected)) {
 
 ColumnMapping = ColMap(active = l, aliases = a, col_types = t, funcs = f)
 
-usethis::use_data(ColumnMapping, overwrite=TRUE)
+usethis::use_data(ColumnMapping,internal = T, overwrite=TRUE)
+

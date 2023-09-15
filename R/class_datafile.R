@@ -21,7 +21,7 @@ DataFile <- setClass(
   prototype = list(
     path = NA_character_,
     data = data.table::data.table(NULL),
-    mapping = StudyManager::ColumnMapping
+    mapping = StudyManager:::ColumnMapping
   )
 )
 

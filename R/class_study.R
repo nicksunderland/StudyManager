@@ -27,7 +27,7 @@ Study <- setClass(
     post_qc_dir = "post_qc",
     pmid = integer(),
     file_structure = list(),
-    mapping = StudyManager::ColumnMapping,
+    mapping = StudyManager:::ColumnMapping,
     data_files = list(),
     qc_data_files = list()
   )

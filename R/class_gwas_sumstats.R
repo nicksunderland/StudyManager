@@ -31,7 +31,7 @@ GWASsumstats <- setClass(
     qc_freq_diff_threshold = 0.2,
     ref_path = character(),
     ref_data_file = NULL,
-    mapping = StudyManager::ColumnMapping
+    mapping = StudyManager:::ColumnMapping
   )
 )
 
