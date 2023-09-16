@@ -39,8 +39,8 @@ setMethod(
   signature = "GWASsumstats",
   definition = function(.Object, ref_path, ref_data_file=NULL, ...) {
 
-    print("init GWASsumstats")
-    print(names(as.list(match.call()[-1])))
+    call <- paste0(names(as.list(match.call()[-1])),collapse=', ')
+    rlog::log_trace(glue::glue("Init GWASsumstats: call({call})"))
 
     # peel off GWASsumstats specific slots
     .Object@ref_path <- ref_path
@@ -60,6 +60,7 @@ setMethod(
     .Object@mapping <- set_active(.Object@mapping, gwas_cols)  # see mapping slot of 'Study'
 
     validObject(.Object)
+    rlog::log_trace(glue::glue("Init GWASsumstats: complete"))
     return(.Object)
   }
 )
@@ -71,16 +72,29 @@ setMethod(
   signature = "StudyCorpus",
   definition = function(object, ...) {
 
+    writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
+
     `%dopar%` <- foreach::`%dopar%`
     cores <- parallel::detectCores()
     cl <- parallel::makeForkCluster(cores)
     doParallel::registerDoParallel(cl)
 
-    foreach::foreach(study = object@studies) %dopar% {
+    object@studies <- foreach::foreach(study = object@studies,
+                                       .combine='list',
+                                       .final = function(x) setNames(study, names(object@studies))) %dopar% {
+
+      sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
 
       run_qc(study, ...)
 
     }
+    sink()
+
+    parallel::stopCluster(cl)
+
+    # return
+    validObject(object)
+    return(object)
   }
 )
 setMethod(
@@ -374,25 +388,29 @@ setMethod(
   signature = c("StudyCorpus", "character"),
   definition = function(object, output_dir, ...) {
 
+    writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
+
     `%dopar%` <- foreach::`%dopar%`
     cores <- parallel::detectCores()
     cl <- parallel::makeForkCluster(cores)
     doParallel::registerDoParallel(cl)
 
-    foreach::foreach(study = object@studies, output_dir=rep(output_dir, length(object@studies))) %dopar% {
+    foreach::foreach(study = object@studies) %dopar% {
 
-      run_qc_plots(study, output_dir)
+      sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
 
+      run_qc_plots(study, output_dir, ...)
+
+      sink()
     }
+
+    parallel::stopCluster(cl)
   }
 )
 setMethod(
   f = "run_qc_plots",
   signature = c("GWASsumstats", "character"),
   definition = function(object, output_dir, ...) {
-
-    print("herre333")
-    print(object@qc_freq_threshold)
 
     stopifnot(dir.exists(output_dir))
 
@@ -406,6 +424,7 @@ setMethod(
       data_file_keys <- list(c(...))
 
     }
+    rlog::log_debug(glue::glue("DataFile keys to process: {paste0(lapply(data_file_keys, paste0, collapse=','), collapse=' | ')}"))
     stopifnot(keys_valid(object, data_file_keys))
 
     # set the reference mapping with the required columns for analysis
@@ -414,93 +433,98 @@ setMethod(
     object@ref_data_file <- free( object@ref_data_file )
     mapping(object@ref_data_file) <- ref_map
 
-    # # extract the required ref data
-    # object@ref_data_file <- extract( object@ref_data_file )
-    #
-    # # set key for faster processing
-    # data.table::setkey(get_data(object@ref_data_file), "cptid")
-    #
-    # # for each data source
-    # for(keys in data_file_keys) {
-    #
-    #   # set the mapping with the required columns for analysis
-    #   req_cols <- c("cptid","SNP","CHR","BP","P","BETA","INFO","FRQ")
-    #   maps <- mapping(object@data_files[[ keys ]])
-    #   maps <- lapply(maps, set_active, col_names=req_cols)
-    #
-    #   # the pre-QC data, chromosomes merged
-    #   rlog::log_debug(glue::glue("Extracting pre-qc plot data data_files{paste0('[',keys,']',collapse='')}"))
-    #   free( object@data_files[[ keys ]] )
-    #   mapping(object@data_files[[ keys ]]) <- maps
-    #   data_file <- extract( object@data_files[[ keys ]], merge_col="CHR_FCT")
-    #
-    #   # the pre-QC data, chromosomes merged
-    #   rlog::log_debug(glue::glue("Extracting post-qc plot data qc_data_files{paste0('[',keys,']',collapse='')}"))
-    #   free( object@qc_data_files[[ keys ]] )
-    #   mapping(object@qc_data_files[[ keys ]]) <- maps
-    #   qc_data_file <- extract( object@qc_data_files[[ keys ]], merge_col="CHR_FCT" )
-    #
-    #   # which SNPs were filtered out
-    #   filt_snps <- get_data(data_file)[!get_data(qc_data_file), on="SNP"][["SNP"]]
-    #
-    #   # bind the pre and post QC data
-    #   rlog::log_info("Creating plotting data...")
-    #   dt <- rbind(
-    #       get_data(data_file)   [, "QC_STATUS" := "PRE-QC" ],
-    #       get_data(qc_data_file)[, "QC_STATUS" := "POST-QC"]
-    #   )[, QC_STATUS := factor(QC_STATUS, levels=c("PRE-QC", "POST-QC"))]
-    #   data.table::setkey(dt, "cptid")
-    #
-    #   # Join the reference data and take the European frequency column
-    #   dt[get_data(object@ref_data_file), EUR_FRQ := EUR_FRQ]
-    #
-    #   diff_levels <- c("No reference data", "EAF outlier", "EAF within tolerance")
-    #   dt[, FRQ_DIFF_FCT := data.table::fcase(is.na(EUR_FRQ), factor("No reference data", levels=diff_levels),
-    #                                          abs(FRQ-EUR_FRQ) > object@qc_freq_diff_threshold, factor("EAF outlier", levels=diff_levels),
-    #                                          abs(FRQ-EUR_FRQ) <=object@qc_freq_diff_threshold, factor("EAF within tolerance", levels=diff_levels),
-    #                                          TRUE, factor(NA_character_)) ]
-    #
-    #   # PLOTTING
-    #   rlog::log_debug(glue::glue("Plotting - output dir: {output_dir}"))
-    #
-    #   output_filename <- paste0(c(basename(object@dir), keys), collapse="_")
-    #   output_path <- file.path(output_dir, output_filename)
-    #
-    #   # Manhattan
-    #   create_manhattan(dt = dt[, c("SNP","CHR","BP","P")],
-    #                    file_path = paste0(output_path, "_qc_manhattan.png"),
-    #                    highlight = filt_snps,
-    #                    title = paste0(c("Manhattan Plot -", basename(object@dir), keys), collapse=" "))
-    #
-    #   # QQ-plot
-    #   create_qq(dt = dt[, c("P","QC_STATUS")],
-    #             file_path = paste0(output_path, "_qc_qq_plot.png"),
-    #             title = paste0(c("QQ plot -", basename(object@dir), keys), collapse=" "))
-    #
-    #   # P value histogram
-    #   create_pvalhist(dt = dt[, c("P","QC_STATUS")],
-    #                   file_path = paste0(output_path, "_qc_pval_hist.png"),
-    #                   title = paste0(c("P value histogram -", basename(object@dir), keys), collapse=" "))
-    #
-    #   # Effect size histogram
-    #   create_eshist(dt = dt[, c("BETA","QC_STATUS")],
-    #                 file_path = paste0(output_path, "_qc_es_hist.png"),
-    #                 title = paste0(c("Effect size histogram -", basename(object@dir), keys), collapse=" "))
-    #
-    #   # Imputation quality histogram
-    #   create_impqualhist(dt = dt[, c("INFO","QC_STATUS")],
-    #                      file_path = paste0(output_path, "_qc_impqual_hist.png"),
-    #                      title = paste0(c("Imputation quality histogram -", basename(object@dir), keys), collapse=" "))
-    #
-    #   # allele frequency plots
-    #   create_eafplot(dt = dt[, c("FRQ","FRQ_DIFF_FCT","EUR_FRQ","QC_STATUS","CHR_FCT")],
-    #                  threshold = object@qc_freq_diff_threshold,
-    #                  file_path = paste0(output_path, "_qc_eaf_plot.png"),
-    #                  title = paste0(c("Allele frequency -", basename(object@dir), keys), collapse=" "))
-    #
-    #   return(TRUE)
-    #
-    #  }
+    # extract the required ref data
+    object@ref_data_file <- extract( object@ref_data_file )
+
+    # set key for faster processing
+    data.table::setkey(get_data(object@ref_data_file), "cptid")
+
+    # for each data source
+    for(keys in data_file_keys) {
+
+      # set the mapping with the required columns for analysis
+      req_cols <- c("cptid","SNP","CHR","BP","P","BETA","INFO","FRQ")
+      maps <- mapping(object@data_files[[ keys ]])
+      if(!is.list(maps)) {
+        maps <- list(maps) # if a low level key there will be only one map
+      }
+      maps <- lapply(maps, set_active, col_names=req_cols)
+
+      # the pre-QC data, chromosomes merged
+      rlog::log_debug(glue::glue("Extracting pre-qc plot data data_files{paste0('[',keys,']',collapse='')}"))
+
+      free( object@data_files[[ keys ]] )
+      mapping(object@data_files[[ keys ]]) <- maps
+      data_file <- extract( object@data_files[[ keys ]], merge_col="CHR_FCT")
+
+      # the pre-QC data, chromosomes merged
+      rlog::log_debug(glue::glue("Extracting post-qc plot data qc_data_files{paste0('[',keys,']',collapse='')}"))
+      free( object@qc_data_files[[ keys ]] )
+      mapping(object@qc_data_files[[ keys ]]) <- maps
+      qc_data_file <- extract( object@qc_data_files[[ keys ]], merge_col="CHR_FCT" )
+
+      # which SNPs were filtered out
+      filt_snps <- get_data(data_file)[!get_data(qc_data_file), on="SNP"][["SNP"]]
+
+      # bind the pre and post QC data
+      rlog::log_info("Creating plotting data...")
+      dt <- rbind(
+          get_data(data_file)   [, "QC_STATUS" := "PRE-QC" ],
+          get_data(qc_data_file)[, "QC_STATUS" := "POST-QC"]
+      )[, QC_STATUS := factor(QC_STATUS, levels=c("PRE-QC", "POST-QC"))]
+      data.table::setkey(dt, "cptid")
+
+      # Join the reference data and take the European frequency column
+      dt[get_data(object@ref_data_file), EUR_FRQ := EUR_FRQ]
+
+      diff_levels <- c("No reference data", "EAF outlier", "EAF within tolerance")
+      dt[, FRQ_DIFF_FCT := data.table::fcase(is.na(EUR_FRQ), factor("No reference data", levels=diff_levels),
+                                             abs(FRQ-EUR_FRQ) > object@qc_freq_diff_threshold, factor("EAF outlier", levels=diff_levels),
+                                             abs(FRQ-EUR_FRQ) <=object@qc_freq_diff_threshold, factor("EAF within tolerance", levels=diff_levels),
+                                             TRUE, factor(NA_character_)) ]
+
+      # PLOTTING
+      rlog::log_debug(glue::glue("Plotting - output dir: {output_dir}"))
+
+      output_filename <- paste0(c(basename(object@dir), keys), collapse="_")
+      output_path <- file.path(output_dir, output_filename)
+
+      # Manhattan
+      create_manhattan(dt = dt[, c("SNP","CHR","BP","P")],
+                       file_path = paste0(output_path, "_qc_manhattan.png"),
+                       highlight = filt_snps,
+                       title = paste0(c("Manhattan Plot -", basename(object@dir), keys), collapse=" "))
+
+      # QQ-plot
+      create_qq(dt = dt[, c("P","QC_STATUS")],
+                file_path = paste0(output_path, "_qc_qq_plot.png"),
+                title = paste0(c("QQ plot -", basename(object@dir), keys), collapse=" "))
+
+      # P value histogram
+      create_pvalhist(dt = dt[, c("P","QC_STATUS")],
+                      file_path = paste0(output_path, "_qc_pval_hist.png"),
+                      title = paste0(c("P value histogram -", basename(object@dir), keys), collapse=" "))
+
+      # Effect size histogram
+      create_eshist(dt = dt[, c("BETA","QC_STATUS")],
+                    file_path = paste0(output_path, "_qc_es_hist.png"),
+                    title = paste0(c("Effect size histogram -", basename(object@dir), keys), collapse=" "))
+
+      # Imputation quality histogram
+      create_impqualhist(dt = dt[, c("INFO","QC_STATUS")],
+                         file_path = paste0(output_path, "_qc_impqual_hist.png"),
+                         title = paste0(c("Imputation quality histogram -", basename(object@dir), keys), collapse=" "))
+
+      # allele frequency plots
+      create_eafplot(dt = dt[, c("FRQ","FRQ_DIFF_FCT","EUR_FRQ","QC_STATUS","CHR_FCT")],
+                     threshold = object@qc_freq_diff_threshold,
+                     file_path = paste0(output_path, "_qc_eaf_plot.png"),
+                     title = paste0(c("Allele frequency -", basename(object@dir), keys), collapse=" "))
+
+
+
+    }
+    return(TRUE)
 
   }
 )
@@ -532,13 +556,14 @@ setMethod(
       ggplot2::facet_grid(cols = ggplot2::vars(QC_STATUS))
 
     # save plot
-    ggplot2::ggsave(plot=plot, filename=file_path, device="png", bg="white", height=15, width=30, units="cm")
+    grDevices::png(filename=file_path, bg="white", height=600, width=1200, units="px")
+    print(plot)
+    grDevices::dev.off()
 
     # return
     invisible(plot)
   }
 )
-
 
 setGeneric("create_eafplot", function(dt, file_path=getwd(), threshold=0.2, ...) standardGeneric("create_eafplot"))
 setMethod(
@@ -574,12 +599,13 @@ setMethod(
       ggplot2::facet_grid(rows = ggplot2::vars(CHR_FCT), cols = ggplot2::vars(QC_STATUS))
 
     # save plot
-    ggplot2::ggsave(plot=plot, filename=file_path, device="png", bg="white", height=30, width=25, units="cm")
+    grDevices::png(filename=file_path, bg="white", height=1440, width=1200, units="px")
+    print(plot)
+    grDevices::dev.off()
 
     # return
     invisible(plot)
 })
-
 
 setGeneric("create_eshist", function(dt, file_path=getwd(), ...) standardGeneric("create_eshist"))
 setMethod(
@@ -613,12 +639,13 @@ setMethod(
       ggplot2::facet_grid(cols = ggplot2::vars(QC_STATUS))
 
     # save plot
-    ggplot2::ggsave(plot=plot, filename=file_path, device="png", bg="white", height=15, width=30, units="cm")
+    grDevices::png(filename=file_path, bg="white", height=600, width=1200, units="px")
+    print(plot)
+    grDevices::dev.off()
 
     # return
     invisible(plot)
 })
-
 
 setGeneric("create_pvalhist", function(dt, file_path=getwd(), ...) standardGeneric("create_pvalhist"))
 setMethod(
@@ -645,14 +672,14 @@ setMethod(
       ggplot2::facet_grid(cols = ggplot2::vars(QC_STATUS))
 
     # save plot
-    ggplot2::ggsave(plot=plot, filename=file_path, device="png", bg="white", height=15, width=30, units="cm")
+    grDevices::png(filename=file_path, bg="white", height=600, width=1200, units="px")
+    print(plot)
+    grDevices::dev.off()
 
     # return
     invisible(plot)
   }
 )
-
-
 
 setGeneric("create_qq", function(dt, file_path=getwd(), ...) standardGeneric("create_qq"))
 setMethod(
@@ -699,7 +726,9 @@ setMethod(
       ggplot2::facet_grid(cols = ggplot2::vars(QC_STATUS))
 
     # save plot
-    ggplot2::ggsave(plot=plot, filename=file_path, device="png", bg="white", height=15, width=30, units="cm")
+    grDevices::png(filename=file_path, bg="white", height=600, width=1200, units="px")
+    print(plot)
+    grDevices::dev.off()
 
     # return
     invisible(plot)
@@ -787,7 +816,9 @@ setMethod(
       )
 
     # save plot
-    ggplot2::ggsave(plot=plot, filename=file_path, device="png", bg="white", height=15, width=35, units="cm")
+    grDevices::png(filename=file_path, bg="white", height=500, width=1200, units="px")
+    print(plot)
+    grDevices::dev.off()
 
     # return
     invisible(plot)

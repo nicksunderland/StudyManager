@@ -1,5 +1,6 @@
 load_all()
 
+
 corpus <- StudyCorpus(corpus_dir = "/Users/xx20081/Downloads/hermes_progression",
                       study_type = "GWASsumstats",
                       ref_path = "/Users/xx20081/Downloads/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz",
@@ -13,17 +14,17 @@ corpus <- StudyCorpus(corpus_dir = "/Users/xx20081/Downloads/hermes_progression"
                           "autosomes" = ".*allcause_death_post_qc.tsv"
                         )
                       ))
+#
+corpus <- run_qc(corpus)
 
-run_qc(corpus)
-
-run_qc_plots(corpus, "/Users/xx20081/Downloads/figures")
-
-
+run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", "allcause_death")
 
 
 
 
 
+
+load_all()
 s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/bioshift_triumph",
                   pre_qc_dir = "pre_qc",
                   post_qc_dir = "post_qc",
@@ -39,12 +40,11 @@ s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/bioshift_tr
                   ),
                   ref_path = "/Users/xx20081/Downloads/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz"
 )
-
 #### EasyQC
-s <- run_qc(s)
+# s <- run_qc(s)
 #
 # #### QC plots
-run_qc_plots(s, "/Users/xx20081/Downloads/figures", "allcause_death")
+run_qc_plots(s, "/Users/xx20081/Downloads/figures","allcause_death")
 #
 
 

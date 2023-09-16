@@ -28,8 +28,8 @@ setMethod(
   signature = "StudyCorpus",
   definition = function(.Object, corpus_dir, study_type, ...) {
 
-    print("init StudyCorpus")
-    print(names(as.list(match.call()[-1])))
+    call <- paste0(names(as.list(match.call()[-1])),collapse=', ')
+    rlog::log_trace(glue::glue("Init StudyCorpus: call({call})"))
 
     # peel off the StudyCorpus specific slots
     .Object@corpus_dir <- corpus_dir
@@ -39,9 +39,12 @@ setMethod(
     .Object <- callNextMethod(.Object, ...)
 
     # create the list of studies from the directory
+    rlog::log_trace(glue::glue("Creating StudyCorpus study list..."))
     .Object <- create_study_list(.Object, study_type)
+    rlog::log_trace(glue::glue("Finished creating StudyCorpus study list"))
 
     validObject(.Object)
+    rlog::log_trace(glue::glue("Init StudyCorpus: complete"))
     return(.Object)
   }
 )

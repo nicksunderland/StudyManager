@@ -36,8 +36,8 @@ setMethod(
   signature = "Study",
   definition = function(.Object, mapping=StudyManager::base_column_mapping, ...) {
 
-    print("init Study")
-    print(names(as.list(match.call()[-1])))
+    call <- paste0(names(as.list(match.call()[-1])),collapse=', ')
+    rlog::log_trace(glue::glue("Init Study: call({call})"))
 
     # cant seem to have default data as a slot, so set here
     .Object@mapping <- mapping
@@ -54,6 +54,7 @@ setMethod(
     }
 
     validObject(.Object)
+    rlog::log_trace(glue::glue("Init Study: complete"))
     return(.Object)
   }
 )
