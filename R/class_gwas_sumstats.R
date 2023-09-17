@@ -67,40 +67,68 @@ setMethod(
 
 
 setGeneric("run_qc", function(object, ...) standardGeneric("run_qc"))
-setMethod(
-  f = "run_qc",
-  signature = "StudyCorpus",
-  definition = function(object, ...) {
-
-    writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
-
-    `%dopar%` <- foreach::`%dopar%`
-    cores <- parallel::detectCores()
-    cl <- parallel::makeForkCluster(cores)
-    doParallel::registerDoParallel(cl)
-
-    object@studies <- foreach::foreach(study = object@studies,
-                                       .combine='list',
-                                       .final = function(x) setNames(study, names(object@studies))) %dopar% {
-
-      sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
-
-      run_qc(study, ...)
-
-    }
-    sink()
-
-    parallel::stopCluster(cl)
-
-    # return
-    validObject(object)
-    return(object)
-  }
-)
+# setMethod(
+#   f = "run_qc",
+#   signature = "StudyCorpus",
+#   definition = function(object, ..., parallel_cores=NA_integer_) {
+#
+#     stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
+#
+#     if(!is.na(parallel_cores)) {
+#       writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
+#       `%do_or_dopar%` <- foreach::`%dopar%`
+#       cores <- parallel::detectCores()
+#
+#       if(parallel_cores > cores) {
+#         rlog::log_warn(glue::glue("Specified number of cores [{parallel_cores}] is more than the detected cores [{cores}]. Using {cores-1}..."))
+#         cores <- cores - 1
+#       } else {
+#         cores <- as.integer(parallel_cores)
+#
+#       }
+#       cl <- parallel::makeForkCluster(cores)
+#       doParallel::registerDoParallel(cl)
+#     } else {
+#       `%do_or_dopar%` <- foreach::`%do%`
+#     }
+#
+#     object@studies <- foreach::foreach(study = object@studies,
+#                                        .combine='list',
+#                                        .final = function(x) setNames(study, names(object@studies))) %do_or_dopar% {
+#
+#       if(!is.na(parallel_cores)) sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
+#
+#       run_qc(study, ...)
+#
+#     }
+#
+#     if(!is.na(parallel_cores)) {
+#       sink()
+#       parallel::stopCluster(cl)
+#     }
+#
+#     # return
+#     validObject(object)
+#     return(object)
+#   }
+# )
 setMethod(
   f = "run_qc",
   signature = "GWASsumstats",
   definition = function(object, ...) {
+
+    # first check if the keys are valid
+    if(length(c(...)) == 0) {
+
+      data_file_keys <- get_data_keys(object)
+
+    } else {
+
+      data_file_keys <- get_data_keys(...)
+
+    }
+    rlog::log_debug(glue::glue("DataFile keys to run quality control on: '{paste0(paste0('[',data_file_keys,']'), collapse=' | ')}'"))
+    stopifnot(keys_valid(object, data_file_keys))
 
     # extract the ref data, enforcing types and doing checks etc.
     rlog::log_info("Reading reference data into GWASsumstats object")
@@ -137,22 +165,10 @@ setMethod(
       }
     }
 
-    # get the keys into the data_files structure
-    if(length(c(...)) == 0) {
+    # process each data_file(s) indicated by the keys
+    for(key in data_file_keys) {
 
-      data_file_keys <- get_data_keys(object)
-
-    } else {
-
-      data_file_keys <- list(c(...))
-
-    }
-    stopifnot(keys_valid(object, data_file_keys))
-
-    # process each data_file
-    for(keys in data_file_keys) {
-
-      args = c(list(object), as.list(keys))
+      args = list(object, key)  # (object, character_vec)
 
       object <- do.call("easy_qc", args)
 
@@ -184,21 +200,19 @@ setMethod(
 #' @import rlog
 #' @export
 #'
-setGeneric("easy_qc", function(object, ...) standardGeneric("easy_qc"))
+setGeneric("easy_qc", function(object, keys) standardGeneric("easy_qc"))
 
 #' @rdname easy_qc
 setMethod(
   f = "easy_qc",
-  signature = c("GWASsumstats"),
-  definition = function(object, ...) {
+  signature = c("GWASsumstats", "character"),
+  definition = function(object, keys) {
 
     # ensure valid keys into the data_file structure
-    keys <- c(...)
     rlog::log_info(glue::glue("Running EASYQC for DataFile{paste0('[',keys,']',collapse='')}"))
     stopifnot(keys_valid(object, keys))
 
     # the DataFile data
-    rlog::log_info("Extracting file data")
     object@data_files[[ keys ]] <- extract( object@data_files[[ keys ]] )
 
     # get the column mapping details for EasyQC
@@ -325,8 +339,8 @@ setMethod(
       "
     )
 
-    rlog::log_info("Starting EASYQC")
-    rlog::log_info(glue::glue("ECF file:\n{ecf_str}"))
+    rlog::log_debug("Starting EASYQC")
+    rlog::log_debug(glue::glue("ECF file:\n{ecf_str}"))
 
     # write the .ecf file
     ecf_path <- paste0(output_path, ".ecf")
@@ -364,13 +378,13 @@ setMethod(
 
         rlog::log_debug(glue::glue("EasyQC failed to created file, likely no SNPs found"))
         rlog::log_debug(glue::glue("Creating qc_data_file with columns: {paste0(col_names(new_post_qc_map), collapse=',')}"))
-        rlog::log_debug(glue::glue("Writing the data.table to: {basename(easyqc_output_file)}"))
-
         empty_dt <- data.table::data.table(matrix(NA, 0, length(col_names(new_post_qc_map))))
         data.table::setnames(empty_dt, col_names(new_post_qc_map))
         object@qc_data_files[[ keys ]] <- DataFile(path=easyqc_output_file,
                                                    data=empty_dt,
                                                    mapping=new_post_qc_map)
+
+        rlog::log_debug(glue::glue("Writing the data.table to: {basename(easyqc_output_file)}"))
         write_file(object@qc_data_files[[ keys ]], file_path=easyqc_output_file, overwrite=TRUE)
       }
     }
@@ -383,30 +397,44 @@ setMethod(
 
 
 setGeneric("run_qc_plots", function(object, output_dir, ...) standardGeneric("run_qc_plots"))
-setMethod(
-  f = "run_qc_plots",
-  signature = c("StudyCorpus", "character"),
-  definition = function(object, output_dir, ...) {
-
-    writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
-
-    `%dopar%` <- foreach::`%dopar%`
-    cores <- parallel::detectCores()
-    cl <- parallel::makeForkCluster(cores)
-    doParallel::registerDoParallel(cl)
-
-    foreach::foreach(study = object@studies) %dopar% {
-
-      sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
-
-      run_qc_plots(study, output_dir, ...)
-
-      sink()
-    }
-
-    parallel::stopCluster(cl)
-  }
-)
+# setMethod(
+#   f = "run_qc_plots",
+#   signature = c("StudyCorpus", "character"),
+#   definition = function(object, output_dir, ..., parallel_cores=NA_integer_) {
+#
+#     stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
+#
+#     if(!is.na(parallel_cores)) {
+#       writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
+#       `%do_or_dopar%` <- foreach::`%dopar%`
+#       cores <- parallel::detectCores()
+#       if(parallel_cores > cores) {
+#         rlog::log_warn(glue::glue("Specified number of cores [{parallel_cores}] is more than the detected cores [{cores}]. Using {cores-1}..."))
+#         cores <- cores - 1
+#       } else {
+#         cores <- as.integer(parallel_cores)
+#       }
+#       cl <- parallel::makeForkCluster(cores)
+#       doParallel::registerDoParallel(cl)
+#     } else {
+#       `%do_or_dopar%` <- foreach::`%do%`
+#     }
+#
+#     foreach::foreach(study = object@studies) %do_or_dopar% {
+#
+#       if(!is.na(parallel_cores)) sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
+#
+#       run_qc_plots(study, output_dir, ...)
+#
+#
+#     }
+#     if(!is.na(parallel_cores)) {
+#       sink()
+#       parallel::stopCluster(cl)
+#     }
+#
+#   }
+# )
 setMethod(
   f = "run_qc_plots",
   signature = c("GWASsumstats", "character"),
@@ -421,10 +449,10 @@ setMethod(
 
     } else {
 
-      data_file_keys <- list(c(...))
+      data_file_keys <- get_data_keys(...)
 
     }
-    rlog::log_debug(glue::glue("DataFile keys to process: {paste0(lapply(data_file_keys, paste0, collapse=','), collapse=' | ')}"))
+    rlog::log_debug(glue::glue("DataFile keys to process for plotting: {paste0(lapply(data_file_keys, paste0, collapse=','), collapse=' | ')}"))
     stopifnot(keys_valid(object, data_file_keys))
 
     # set the reference mapping with the required columns for analysis

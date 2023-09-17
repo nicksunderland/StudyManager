@@ -52,7 +52,7 @@ setValidity(
 
 # see generic set in 'ColMap' class
 # setGeneric("col_names", function(x) standardGeneric("col_names"))
-setMethod("col_names", "DataFile", function(x) names(col_map(x@mapping, only.active=TRUE)) )
+setMethod("col_names", valueClass="character", "DataFile", function(x) names(col_map(x@mapping, only.active=TRUE)) )
 
 # see generic set in 'ColMap' class
 # setGeneric("col_map", function(x, ...) standardGeneric("col_map"))
@@ -168,7 +168,7 @@ setMethod(
 #' @return a data.table
 #' @rdname get_data
 #' @export
-setGeneric("get_data", function(x, cols=NULL) standardGeneric("get_data"))
+setGeneric("get_data", valueClass="data.table", function(x, cols=NULL) standardGeneric("get_data"))
 #' @rdname get_data
 setMethod(
   f = "get_data",
@@ -249,6 +249,7 @@ setMethod(
 setGeneric("free", function(x) standardGeneric("free"))
 setMethod("free", "list", function(x) lapply(x, free))
 setMethod("free", "DataFile", function(x) {
+
   if(data_exists(x)) {
     x@data[, names(x@data) := NULL]
   }
@@ -283,7 +284,7 @@ setMethod(
 
     } else {
 
-      rlog::log_info(glue::glue("Extract from DataFile: ../{basename(dirname(x@path))}/{basename(x@path)}"))
+      rlog::log_debug(glue::glue("Extract from DataFile: ../{basename(dirname(x@path))}/{basename(x@path)}"))
 
       # active columns
       active_col_map <- col_map(x)

@@ -75,7 +75,7 @@ setGeneric("post_qc_data_dir", function(x) standardGeneric("post_qc_data_dir"))
 setMethod("post_qc_data_dir", "Study", function(x) file.path(x@dir, x@post_qc_dir))
 
 setClassUnion("listORcharacterORmissing", c("list", "character", "missing"))
-setGeneric("create_data_files", function(object, x=NULL) standardGeneric("create_data_files"))
+setGeneric("create_data_files", function(object, x=NULL, append_regex="") standardGeneric("create_data_files"))
 setMethod(
   f = "create_data_files",
   signature = c("Study", "listORcharacterORmissing"),
@@ -113,11 +113,13 @@ setMethod(
       # only allow one file per regex (each file should be named), or no file found
       if(length(file_path) == 0) {
 
+        rlog::log_warn(glue::glue("Dir: {basename(object@dir)}"))
         rlog::log_warn(glue::glue("file regex `{file_name_regex}` did not find any files"))
         return(NULL)
 
       } else if(length(file_path) > 1) {
 
+        rlog::log_warn(glue::glue("Dir: {basename(object@dir)}"))
         rlog::log_error(glue::glue("file regex must yeild one file (or no file) but found multiple using `{file_name_regex}`: \n{paste0(file_path, collapse='\n')}"))
         stop("create_data_files() multi file regex error")
 
@@ -131,9 +133,9 @@ setMethod(
   }
 )
 
-# recursion via different signatures
-setGeneric("get_data_keys", function(input, prefix=NULL) standardGeneric("get_data_keys"))
-# if 'Study' call the function on the study data_file object
+# recursion via different signatures; always returns a list of keys (character vectors)
+setGeneric("get_data_keys", valueClass="list", function(input, ...) standardGeneric("get_data_keys"))
+# if 'Study' call the function on the study data_files object (a list)
 setMethod("get_data_keys", "Study", function(input, prefix = NULL) get_data_keys(input@data_files))
 # if list, i.e. the data_file object, recursively return into that list
 setMethod(
@@ -145,7 +147,7 @@ setMethod(
 
     for (name in names(input)) {
 
-      new_prefix <- c(prefix, name)
+      new_prefix <- c(prefix, name) # add the name of the list, i.e. build up a the names of each level
       result <- c(result, get_data_keys(input[[name]], new_prefix))
 
     }
@@ -154,12 +156,35 @@ setMethod(
 )
 # the base case, essentially 'if(DataFile)', return the prefix (i.e. the name of the DataFile)
 setMethod("get_data_keys", "DataFile",  function(input, prefix = NULL) list(prefix))
+# a different case where actual list level names are passed as characters or character vectors
+setMethod(
+  f = "get_data_keys",
+  signature = "character",
+  definition = function(input, ...) {
+
+    # must be character
+    stopifnot("All inputs must be characters or character vectors: level1, level2, ..., levelN" = is.character(c(input, ...)))
+
+    # in order: input is level 1, then subsequent characters level2, level3, etc
+    levels_list <- c(list(input), list(...))
+
+    # get all combinations of the upper levels with the lower levels
+    keys_df <- expand.grid(levels_list)
+
+    # convert this to a list of keys (character vectors)
+    keys_list <- unname(as.list(as.data.frame(t(keys_df))))
+
+    # return
+    return(keys_list)
+  }
+)
 
 setGeneric("keys_valid", function(object, keys, ...) standardGeneric("keys_valid"))
 setMethod(
   f = "keys_valid",
   signature = c("Study", "list"),
   definition = function(object, keys){
+    stopifnot("An empty list is not a valid key" = length(keys) > 0)
     test_all = all(sapply(keys, keys_valid, object=object))
     return(test_all)
   }
@@ -180,6 +205,14 @@ setMethod(
         }
       },
       error = function(e) {
+        levels_list <- c(list(keys), list(...))
+        keys_df <- expand.grid(levels_list)
+        keys_list <- unname(as.list(as.data.frame(t(keys_df))))
+
+        # return
+        return(keys_list)
+
+
         rlog::log_error(glue::glue("invalid keys: c({paste0('\"', c(keys, ...), '\"', collapse=', ')}). Possible keys: {paste(get_data_keys(object), collapse=', ')}"))
         return(FALSE)
       }
@@ -190,7 +223,7 @@ setMethod(
 setGeneric("copy_file_structure", function(file_structure) standardGeneric("copy_file_structure"))
 setMethod(
   f = "copy_file_structure",
-  signature = c("list"),
+  signature = "list",
   definition = function(file_structure) {
 
     result <- vector("list", length(file_structure))

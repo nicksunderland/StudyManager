@@ -99,3 +99,27 @@ setMethod(
     return(object)
   }
 )
+
+
+setMethod(
+  f = "show",
+  signature = "StudyCorpus",
+  definition = function(object) {
+
+    file_path_list <- function(df_list_el) {
+      out <- vector("list", length(df_list_el))
+      names(out) <- names(df_list_el)
+      for(i in seq_along(df_list_el)) {
+        if(is.list(df_list_el[[i]])) {
+          out[[i]] <- file_path_list(df_list_el[[i]])
+        }
+      }
+      return(results)
+    }
+
+    l <- file_path_list(object@data_files)
+    print(Hmisc::list.tree(l, size=F))
+
+  }
+)
+
