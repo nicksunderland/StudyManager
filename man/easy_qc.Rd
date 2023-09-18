@@ -2,12 +2,12 @@
 % Please edit documentation in R/class_gwas_sumstats.R
 \name{easy_qc}
 \alias{easy_qc}
-\alias{easy_qc,GWASsumstats-method}
+\alias{easy_qc,GWASsumstats,character-method}
 \title{Title}
 \usage{
-easy_qc(object, ...)
+easy_qc(object, keys)
 
-\S4method{easy_qc}{GWASsumstats}(object, ...)
+\S4method{easy_qc}{GWASsumstats,character}(object, keys)
 }
 \arguments{
 \item{object}{GWASsumstats oobject}

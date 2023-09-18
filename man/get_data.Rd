@@ -11,6 +11,8 @@ get_data(x, cols = NULL)
 }
 \arguments{
 \item{x}{a DataFile object}
+
+\item{cols}{column names}
 }
 \value{
 a data.table

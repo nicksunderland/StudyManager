@@ -1,4 +1,4 @@
-#' Title
+#' DataFile class
 #'
 #' @slot path character.
 #' @slot data data.table.
@@ -89,9 +89,24 @@ setMethod(
   }
 )
 
+#' path
+#'
+#' @param x DataFile object
+#'
+#' @return the path
+#' @export
+#'
 setGeneric("path", function(x) standardGeneric("path"))
 setMethod("path", "DataFile", function(x) x@path)
 
+#' set path
+#'
+#' @param x DataFile object
+#' @param value  the path
+#'
+#' @return DataFile object
+#' @export
+#'
 setGeneric("path<-", function(x, value) standardGeneric("path<-"))
 setMethod("path<-", "DataFile", function(x, value) {
 
@@ -108,14 +123,40 @@ setMethod("path<-", "DataFile", function(x, value) {
   x
 })
 
+#' file_name
+#'
+#' @param x .
+#'
+#' @return the filename
+#' @export
+#'
 setGeneric("file_name", function(x) standardGeneric("file_name"))
+#' @rdname file_name
 setMethod("file_name", "DataFile", function(x) basename(x@path))
 
+#' mapping
+#'
+#' @param x .
+#'
+#' @return .map
+#' @export
+#'
 setGeneric("mapping", function(x) standardGeneric("mapping"))
+#' @rdname mapping
 setMethod("mapping", "DataFile", function(x) x@mapping)
+#' @rdname mapping
 setMethod("mapping", "list", function(x) lapply(x, mapping))
 
+#' mapping
+#'
+#' @param x object
+#' @param value the map
+#'
+#' @return obj
+#' @export
+#'
 setGeneric("mapping<-", function(x, value) standardGeneric("mapping<-"))
+#' @rdname mapping<-
 setMethod(
   f = "mapping<-",
   signature = "list",
@@ -133,6 +174,7 @@ setMethod(
     return(x)
   }
 )
+#' @rdname mapping<-
 setMethod("mapping<-", "DataFile", function(x, value) {
 
   x@mapping <- value
@@ -148,7 +190,15 @@ setMethod("mapping<-", "DataFile", function(x, value) {
   x
 })
 
+#' data_exists
+#'
+#' @param x .
+#'
+#' @return a Datafile obj
+#' @export
+#'
 setGeneric("data_exists", function(x) standardGeneric("data_exists"))
+#' @rdname data_exists
 setMethod(
   f = "data_exists",
   signature = "DataFile",
@@ -165,8 +215,8 @@ setMethod(
 
 #' @title get_data
 #' @param x a DataFile object
+#' @param cols column names
 #' @return a data.table
-#' @rdname get_data
 #' @export
 setGeneric("get_data", valueClass="data.table", function(x, cols=NULL) standardGeneric("get_data"))
 #' @rdname get_data
@@ -214,7 +264,16 @@ setMethod(
   }
 )
 
+#' set_data
+#'
+#' @param x .
+#' @param value .
+#'
+#' @return DataFile object
+#' @export
+#'
 setGeneric("set_data<-", function(x, value) standardGeneric("set_data<-"))
+#' @rdname set_data<-
 setMethod("set_data<-", "DataFile", function(x, value) {
   x@data <- value
   validObject(x)
@@ -222,7 +281,20 @@ setMethod("set_data<-", "DataFile", function(x, value) {
 })
 
 
+#' write_file
+#'
+#' @param x .
+#' @param file_path .
+#' @param overwrite .
+#' @param append .
+#' @param sep .
+#' @param ... .
+#'
+#' @return write_file
+#' @export
+#'
 setGeneric("write_file", function(x, file_path, overwrite=FALSE, append=FALSE, sep="\t", ...) standardGeneric("write_file"))
+#' @rdname write_file
 setMethod(
   f = "write_file",
   signature = c("DataFile", "character"),
@@ -246,8 +318,18 @@ setMethod(
   }
 )
 
+
+#' free
+#'
+#' @param x .
+#'
+#' @return a Datafile obj
+#' @export
+#'
 setGeneric("free", function(x) standardGeneric("free"))
+#' @rdname write_file
 setMethod("free", "list", function(x) lapply(x, free))
+#' @rdname write_file
 setMethod("free", "DataFile", function(x) {
 
   if(data_exists(x)) {
@@ -266,6 +348,14 @@ setMethod("free", "DataFile", function(x) {
 
 
 
+#' extract
+#'
+#' @param x .
+#' @param ... .
+#'
+#' @return a Datafile obj
+#' @export
+#'
 setGeneric("extract", function(x, ...) standardGeneric("extract"))
 setMethod(
   f = "extract",

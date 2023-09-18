@@ -4,12 +4,12 @@
 \name{DataFile-class}
 \alias{DataFile-class}
 \alias{DataFile}
-\title{Title}
+\title{DataFile class}
 \value{
 a DataFile object
 }
 \description{
-Title
+DataFile class
 }
 \section{Slots}{
 

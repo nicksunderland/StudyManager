@@ -1,3 +1,14 @@
+#' ColMap
+#'
+#' @slot active logical.
+#' @slot aliases list.
+#' @slot col_types character.
+#' @slot funcs list.
+#' @slot col_fill ANY.
+#'
+#' @return a ColMap object
+#' @export
+#'
 ColMap <- setClass(
   Class = "ColMap",
   slots = list(
@@ -34,25 +45,85 @@ setValidity(
   }
 )
 
+#' col_fill
+#'
+#' @param x a Colmap object
+#'
+#' @return the fill value
+#' @export
+#'
 setGeneric("col_fill", function(x) standardGeneric("col_fill"))
+#' @rdname col_fill
 setMethod("col_fill", "ColMap", function(x) x@col_fill )
 
+
+#' all_cols
+#'
+#' @param x a Colmap object
+#'
+#' @return the names of the active columns
+#' @export
+#'
 setGeneric("all_cols", function(x) standardGeneric("all_cols"))
+#' @rdname all_cols
 setMethod("all_cols", "ColMap", function(x) names(x@active))
 
+
+#' col_types
+#'
+#' @param x a Colmap object
+#'
+#' @return the column types of the active columns
+#' @export
+#'
 setGeneric("col_types", function(x) standardGeneric("col_types"))
+#' @rdname col_types
 setMethod("col_types", "ColMap", function(x) x@col_types[x@active] )
 
+#' col_type_funcs
+#'
+#' @param x a Colmap object
+#'
+#' @return a list of functions to apply to the columns on extracting
+#' @export
+#'
 setGeneric("col_type_funcs", function(x) standardGeneric("col_type_funcs"))
+#' @rdname col_type_funcs
 setMethod("col_type_funcs", "ColMap", function(x) x@funcs[x@active] )
 
+#' col_aliases
+#'
+#' @param x a Colmap object
+#'
+#' @return a list of alias vectors
+#' @export
+#'
 setGeneric("col_aliases", function(x) standardGeneric("col_aliases"))
+#' @rdname col_aliases
 setMethod("col_aliases", "ColMap", function(x) x@aliases[x@active] )
 
+#' col_active
+#'
+#' @param x a Colmap object
+#'
+#' @return logical vectors of possible columns (nameS) and whether active or not
+#' @export
+#'
 setGeneric("col_active", function(x) standardGeneric("col_active"))
+#' @rdname col_active
 setMethod("col_active", "ColMap", function(x) x@active[x@active] )
 
+#' set_active
+#'
+#' @param x a Colmap object
+#' @param col_names the names to activate
+#' @param rest.off whether to turn the rest of the columns off
+#'
+#' @return a Colmap object
+#' @export
+#'
 setGeneric("set_active", function(x, col_names, rest.off=TRUE) standardGeneric("set_active"))
+#' @rdname set_active
 setMethod(
   f = "set_active",
   signature = c("ColMap", "character"),
@@ -86,10 +157,32 @@ setMethod(
   }
 )
 
+#' col_names
+#'
+#' @param x a Colmap object
+#'
+#' @return names of the active columns
+#' @export
+#'
 setGeneric("col_names", function(x) standardGeneric("col_names"))
+#' @rdname col_names
 setMethod("col_names", "ColMap", function(x) names(col_map(x, only.active=TRUE)) )
 
+#' col_map
+#'
+#' @param x a Colmap object
+#' @param input_col_names NULL,
+#' @param only.active .
+#' @param ignore.case .
+#' @param ... .
+#'
+#' @return the col name map
+#' @export
+#'
 setGeneric("col_map", function(x, ...) standardGeneric("col_map"))
+#' @param ColMap
+#'
+#' @rdname col_map
 setMethod(
   f = "col_map",
   signature = "ColMap",
@@ -144,7 +237,21 @@ setMethod(
   }
 )
 
+#' add_col
+#'
+#' @param x ColMap object
+#' @param col_name .
+#' @param col_type .
+#' @param func .
+#' @param aliases .
+#' @param active .
+#' @param overwrite .
+#'
+#' @return ColMap object
+#' @export
+#'
 setGeneric("add_col", function(x, col_name, col_type, func, aliases=list(col_name), active=TRUE, overwrite=FALSE) standardGeneric("add_col"))
+#' @rdname add_col
 setMethod(
   f = "add_col",
   signature = c("ColMap", "character", "character", "function"),
@@ -186,7 +293,16 @@ setMethod(
   }
 )
 
+#' remove_col
+#'
+#' @param x ColMap object
+#' @param col_name .
+#'
+#' @return a Colmap object
+#' @export
+#'
 setGeneric("remove_col", function(x, col_name) standardGeneric("remove_col"))
+#' @rdname remove_col
 setMethod(
   f = "remove_col",
   signature = c("ColMap", "character"),
@@ -210,7 +326,17 @@ setMethod(
   }
 )
 
+#' add_alias
+#'
+#' @param x .
+#' @param col_name .
+#' @param alias .
+#'
+#' @return a Datafile obj
+#' @export
+#'
 setGeneric("add_alias", function(x, col_name, alias) standardGeneric("add_alias"))
+#' @rdname add_alias
 setMethod(
   f = "add_alias",
   signature = c("ColMap", "character", "character"),

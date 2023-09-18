@@ -21,9 +21,10 @@ Imports:
     rlang,
     rlog,
     tibble,
-    wesanderson
+    wesanderson,
+    EasyX
 Remotes:
-    github::winkusch/EasyX
+    github::git@github.com:winkusch/EasyX
 Depends: 
     R (>= 2.10)
 LazyData: true
