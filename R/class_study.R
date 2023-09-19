@@ -54,7 +54,7 @@ setMethod(
     # the parents GWASsumstats etc. To test we just see if we have the slot 'corpus_dir'
     if(!"corpus_dir" %in% slotNames(.Object)) {
       .Object@data_files <- create_data_files(.Object)
-      .Object@qc_data_files <- copy_file_structure(.Object@data_files)
+      .Object@qc_data_files <- create_qc_data_files(.Object)
     }
 
     validObject(.Object)
@@ -269,7 +269,76 @@ setMethod("copy_file_structure", "list", function(file_structure) {
       }
     }
     return(result)
-  })
+  }
+)
+
+
+
+
+
+setGeneric("find_qc_files", function(object) standardGeneric("find_qc_files"))
+setMethod("find_qc_files", "list", function(object) {
+
+
+  result <- vector("list", length(file_structure))
+  names(result) <- names(file_structure)
+
+  for (i in seq_along(file_structure)) {
+    if(is.list(file_structure[[i]])) {
+      result[[i]] <- copy_file_structure(file_structure[[i]])
+    }
+  }
+  return(result)
+}
+)
+
+setGeneric("create_qc_data_files", function(object, ...) standardGeneric("create_qc_data_files"))
+setMethod("create_qc_data_files", "Study", function(object, input_list=NULL, parent_names=character(0)) {
+
+  if(is.null(input_list)) {
+
+    create_qc_data_files(object, object@file_structure)
+
+  } else {
+
+    for (key in names(input_list)) {
+
+      value <- input_list[[key]]
+      current_names <- c(parent_names, key)
+
+      if (is.list(value)) {
+
+        input_list[[key]] <- create_qc_data_files(object, value, current_names)
+
+      } else {
+
+        file_name_regex <- paste0(c(basename(object@dir), current_names, "post_qc.gz$"), collapse="_")
+        file_path <- list.files(post_qc_data_dir(object),  full.names=TRUE)
+        file_path = file_path[grepl(file_name_regex, file_path, perl=TRUE)]
+
+        # only allow one file per regex (each file should be named), or no file found
+        if(length(file_path) == 0) {
+
+          rlog::log_warn(glue::glue("Dir: {basename(object@dir)}"))
+          rlog::log_warn(glue::glue("file regex `{file_name_regex}` did not find any post_qc files"))
+          input_list[[key]] <- NULL
+
+        } else if(length(file_path) > 1) {
+
+          rlog::log_warn(glue::glue("Dir: {basename(object@dir)}"))
+          rlog::log_error(glue::glue("More than one post-qc file found multiple with `{file_name_regex}`: \n{paste0(file_path, collapse='\n')}"))
+          stop("create_qc_data_files() multi file regex error")
+
+        } else {
+          input_list[[key]] <- DataFile(path=file_path, mapping=object@mapping)
+        }
+      }
+    }
+    return(input_list)
+  }
+}
+)
+
 
 # setValidity(
 #   Class = "Study",

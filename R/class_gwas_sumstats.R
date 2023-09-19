@@ -183,13 +183,18 @@ setMethod(
     rlog::log_info(glue::glue("Running EASYQC for DataFile{paste0('[',keys,']',collapse='')}"))
     stopifnot(keys_valid(object, keys))
 
-    # the DataFile data
-    object@data_files[[ keys ]] <- extract( object@data_files[[ keys ]] )
-
-    # get the column mapping details for EasyQC
+    # ensure required columns activated
     map <- mapping(object@data_files[[ keys ]]) # from each DataFile map as could be different
+    gwas_cols <- c("SNP","CHR","BP","STRAND","N_CAS","N","INFO","FRQ","EFFECT_ALLELE","OTHER_ALLELE","BETA","SE","P")
+    map <- set_active(map, gwas_cols)  # see mapping slot of 'Study'
+    mapping(object@data_files[[ keys ]]) <- map
+
+    # types and names
     input_types <- col_types(map)
     input_cols <- names(input_types)
+
+    # the DataFile data
+    object@data_files[[ keys ]] <- extract( object@data_files[[ keys ]] )
 
     # create a written temp file from the DataFile (appropriate col names enforced when we extracted)
     input_path <- tempfile()

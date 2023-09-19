@@ -1,6 +1,13 @@
 load_all()
 
-s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/solid",
+foo_pre<-data.table::fread("/Users/xx20081/Downloads/hermes_progression/cathgen/pre_qc/composite1_chrN_cathgen_maf5.txt.gz")
+View(head(foo_pre))
+foo<- data.table::fread("/Users/xx20081/Downloads/hermes_progression/cathgen/post_qc/cathgen_composite_1_autosomes_post_qc.notinref.txt")
+View(head(foo))
+
+
+
+s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/bioshift_triumph",
                   ref_path = "/Users/xx20081/Downloads/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz",
                   pre_qc_dir = "pre_qc",
                   post_qc_dir = "post_qc",
@@ -21,6 +28,8 @@ s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/solid",
                       "xchr_female" = "(?i)^(?=.*comp(?:osite)?2)(?=.*female).*"
                     )
                   )
+
+
 )
 #### EasyQC
 s <- run_qc(s)
