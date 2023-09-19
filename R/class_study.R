@@ -273,26 +273,18 @@ setMethod("copy_file_structure", "list", function(file_structure) {
 )
 
 
-
-
-
-setGeneric("find_qc_files", function(object) standardGeneric("find_qc_files"))
-setMethod("find_qc_files", "list", function(object) {
-
-
-  result <- vector("list", length(file_structure))
-  names(result) <- names(file_structure)
-
-  for (i in seq_along(file_structure)) {
-    if(is.list(file_structure[[i]])) {
-      result[[i]] <- copy_file_structure(file_structure[[i]])
-    }
-  }
-  return(result)
-}
-)
-
+#' create_qc_data_files
+#'
+#' @param object .
+#' @param ... .
+#' @param input_list .
+#' @param parent_names .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("create_qc_data_files", function(object, ...) standardGeneric("create_qc_data_files"))
+#' @rdname create_qc_data_files
 setMethod("create_qc_data_files", "Study", function(object, input_list=NULL, parent_names=character(0)) {
 
   if(is.null(input_list)) {
