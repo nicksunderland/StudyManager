@@ -7,7 +7,7 @@ View(head(foo))
 
 
 
-s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/bioshift_triumph",
+s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/cathgen",
                   ref_path = "/Users/xx20081/Downloads/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz",
                   pre_qc_dir = "pre_qc",
                   post_qc_dir = "post_qc",

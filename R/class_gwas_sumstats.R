@@ -418,6 +418,14 @@ setMethod(
     # for each data source
     for(keys in data_file_keys) {
 
+      # No data, skip
+      if(length(object@data_files[[ keys ]]) == 0 | length(object@qc_data_files[[ keys ]]) == 0) {
+
+        rlog::log_warn(glue::glue("No DataFile found for {basename(object@dir)}[{paste0('[',keys,']',collapse='')}]: Pre-QC: {length(object@data_files[[ keys ]])} files, Post-QC: {length(object@qc_data_files[[ keys ]])} files --> skipping..."))
+        next
+
+      }
+
       # set the mapping with the required columns for analysis
       req_cols <- c("cptid","SNP","CHR","BP","P","BETA","INFO","FRQ")
       maps <- mapping(object@data_files[[ keys ]])

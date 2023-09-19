@@ -5,6 +5,8 @@ f = list()
 l = logical()
 map = MungeSumstats:::sumstatsColHeaders
 map <- map |>
+  # binding in other mappings that I've found
+       #c(UNCORRECTED, CORRECTED)
   rbind(c("QUAL_SCORE", "INFO"),
         c("STRAND", "STRAND"),
         c("N_EVENTS", "N_CAS"),
@@ -14,8 +16,17 @@ map <- map |>
         c("cptid", "cptid"),
         c("CPTID", "cptid"),
         c("CALL_RATE","CALL_RATE"),
-        c("AMBIGUOUS", "AMBIGUOUS")
-        ) |>
+        c("AMBIGUOUS", "AMBIGUOUS"),
+        c("rs_number", "SNP"),
+        c("beta_95L", "BETA_95L"),
+        c("beta_95U", "BETA_95U"),
+        c("_-log10_p-value", "LOG10_P"),
+        c("q_statistic", "Q_STATISTIC"),
+        c("q_p-value", "Q_P_VALUE"),
+        c("n_studies", "NSTUDY"),
+        c("effects", "DIRECTION"),
+        c("i2", "HETISQT")) |>
+
   dplyr::mutate(Corrected = dplyr::if_else(Corrected=="A1", "OTHER_ALLELE", Corrected),
                 Corrected = dplyr::if_else(Corrected=="A2", "EFFECT_ALLELE", Corrected),
                 Corrected = dplyr::if_else(Corrected=="A*", "A0", Corrected)) |>
@@ -35,6 +46,7 @@ for(name in unique(map$Corrected)) {
             "SIGNED_SUMSTAT"="numeric",
             "SE"="numeric",
             "P"="numeric",
+            "LOG10_P"="numeric",
             "OR"="numeric",
             "NSTUDY"="integer",
             "N_CON"="integer",
@@ -55,6 +67,10 @@ for(name in unique(map$Corrected)) {
             "CHR"="character",
             "BP"="integer",
             "BETA"="numeric",
+            "BETA_95L"="numeric",
+            "BETA_95U"="numeric",
+            "Q_STATISTIC"="numeric",
+            "Q_P_VALUE"="numeric",
             "AC"="integer",
             "OTHER_ALLELE"="character",
             "EFFECT_ALLELE"="character",
@@ -64,6 +80,8 @@ for(name in unique(map$Corrected)) {
             "cptid"="character",
             "AMBIGUOUS"="logical",
             "CALL_RATE"="numeric")
+
+
   t<-c(t,types[name])
 
   func = list("Z"=as.numeric,
@@ -71,6 +89,7 @@ for(name in unique(map$Corrected)) {
               "SIGNED_SUMSTAT"=as.numeric,
               "SE"=as.numeric,
               "P"=as.numeric,
+              "LOG10_P"=as.numeric,
               "OR"=as.numeric,
               "NSTUDY"=as.integer,
               "N_CON"=as.integer,
@@ -91,6 +110,10 @@ for(name in unique(map$Corrected)) {
               "CHR"=as.character,
               "BP"=as.integer,
               "BETA"=as.numeric,
+              "BETA_95L"=as.numeric,
+              "BETA_95U"=as.numeric,
+              "Q_STATISTIC"=as.numeric,
+              "Q_P_VALUE"=as.numeric,
               "AC"=as.integer,
               "EFFECT_ALLELE"=as.character,
               "OTHER_ALLELE"=as.character,
