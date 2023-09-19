@@ -2,9 +2,12 @@
 % Please edit documentation in R/class_datafile.R
 \name{path<-}
 \alias{path<-}
+\alias{path<-,DataFile-method}
 \title{set path}
 \usage{
 path(x) <- value
+
+\S4method{path}{DataFile}(x) <- value
 }
 \arguments{
 \item{x}{DataFile object}

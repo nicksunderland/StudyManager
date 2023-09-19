@@ -3,7 +3,7 @@
 \name{easy_qc}
 \alias{easy_qc}
 \alias{easy_qc,GWASsumstats,character-method}
-\title{Title}
+\title{easy_qc}
 \usage{
 easy_qc(object, keys)
 
@@ -12,11 +12,11 @@ easy_qc(object, keys)
 \arguments{
 \item{object}{GWASsumstats oobject}
 
-\item{...}{data_file keys}
+\item{keys}{description}
 }
 \value{
 GWASsumstats oobject
 }
 \description{
-Title
+easy_qc
 }

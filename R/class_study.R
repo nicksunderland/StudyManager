@@ -1,9 +1,12 @@
-#' Title
+#' Study virtual class
 #'
 #' @slot dir character.
-#' @slot pmid integer.
 #' @slot file_structure list.
 #' @slot data_files list.
+#' @slot pre_qc_dir .
+#' @slot post_qc_dir .
+#' @slot mapping .
+#' @slot qc_data_files .
 #'
 #' @return object
 #' @export
@@ -59,23 +62,40 @@ setMethod(
   }
 )
 
-# setValidity(
-#   Class = "Study",
-#   method = function(object) {
-#
-#     stopifnot("`dir` must be a valid directory path" = dir.exists(object@dir))
-#
-#   }
-# )
-
+#' pre_qc_data_dir
+#'
+#' @param x .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("pre_qc_data_dir", function(x) standardGeneric("pre_qc_data_dir"))
+#' @rdname pre_qc_data_dir
 setMethod("pre_qc_data_dir", "Study", function(x) file.path(x@dir, x@pre_qc_dir))
 
+#' post_qc_data_dir
+#'
+#' @param x .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("post_qc_data_dir", function(x) standardGeneric("post_qc_data_dir"))
+#' @rdname post_qc_data_dir
 setMethod("post_qc_data_dir", "Study", function(x) file.path(x@dir, x@post_qc_dir))
 
 setClassUnion("listORcharacterORmissing", c("list", "character", "missing"))
+#' create_data_files
+#'
+#' @param object .
+#' @param x .
+#' @param append_regex .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("create_data_files", function(object, x=NULL, append_regex="") standardGeneric("create_data_files"))
+#' @rdname create_data_files
 setMethod(
   f = "create_data_files",
   signature = c("Study", "listORcharacterORmissing"),
@@ -134,14 +154,22 @@ setMethod(
 )
 
 # recursion via different signatures; always returns a list of keys (character vectors)
+#' get_data_keys
+#'
+#' @param input .
+#' @param ... .
+#' @param prefix description
+#'
+#' @return .
+#' @export
+#'
 setGeneric("get_data_keys", valueClass="list", function(input, ...) standardGeneric("get_data_keys"))
-# if 'Study' call the function on the study data_files object (a list)
+# if 'Study' call the function on the study data_files object (a list)\
+#' @rdname get_data_keys
 setMethod("get_data_keys", "Study", function(input, prefix = NULL) get_data_keys(input@data_files))
 # if list, i.e. the data_file object, recursively return into that list
-setMethod(
-  f = "get_data_keys",
-  signature = "list",
-  definition = function(input, prefix = NULL) {
+#' @rdname get_data_keys
+setMethod("get_data_keys", "list", function(input, prefix = NULL) {
 
     result <- list()
 
@@ -152,15 +180,13 @@ setMethod(
 
     }
     return(result)
-  }
-)
+  })
 # the base case, essentially 'if(DataFile)', return the prefix (i.e. the name of the DataFile)
+#' @rdname get_data_keys
 setMethod("get_data_keys", "DataFile",  function(input, prefix = NULL) list(prefix))
 # a different case where actual list level names are passed as characters or character vectors
-setMethod(
-  f = "get_data_keys",
-  signature = "character",
-  definition = function(input, ...) {
+#' @rdname get_data_keys
+setMethod("get_data_keys", "character", function(input, ...) {
 
     # must be character
     stopifnot("All inputs must be characters or character vectors: level1, level2, ..., levelN" = is.character(c(input, ...)))
@@ -176,23 +202,26 @@ setMethod(
 
     # return
     return(keys_list)
-  }
-)
+  })
 
+#' keys_valid
+#'
+#' @param object .
+#' @param keys .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("keys_valid", function(object, keys, ...) standardGeneric("keys_valid"))
-setMethod(
-  f = "keys_valid",
-  signature = c("Study", "list"),
-  definition = function(object, keys){
+#' @rdname keys_valid
+setMethod("keys_valid", c("Study", "list"), function(object, keys){
     stopifnot("An empty list is not a valid key" = length(keys) > 0)
     test_all = all(sapply(keys, keys_valid, object=object))
     return(test_all)
-  }
-)
-setMethod(
-  f = "keys_valid",
-  signature = c("Study", "character"),
-  definition = function(object, keys, ...){
+  })
+#' @rdname keys_valid
+setMethod("keys_valid", c("Study", "character"), function(object, keys, ...){
 
     tryCatch(
       expr = {
@@ -217,14 +246,18 @@ setMethod(
         return(FALSE)
       }
     )
-  }
-)
+  })
 
+#' copy_file_structure
+#'
+#' @param file_structure .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("copy_file_structure", function(file_structure) standardGeneric("copy_file_structure"))
-setMethod(
-  f = "copy_file_structure",
-  signature = "list",
-  definition = function(file_structure) {
+#' @rdname copy_file_structure
+setMethod("copy_file_structure", "list", function(file_structure) {
 
     result <- vector("list", length(file_structure))
     names(result) <- names(file_structure)
@@ -235,5 +268,13 @@ setMethod(
       }
     }
     return(result)
-  }
-)
+  })
+
+# setValidity(
+#   Class = "Study",
+#   method = function(object) {
+#
+#     stopifnot("`dir` must be a valid directory path" = dir.exists(object@dir))
+#
+#   }
+# )

@@ -2,14 +2,22 @@
 % Please edit documentation in R/class_datafile.R
 \name{extract}
 \alias{extract}
+\alias{extract,DataFile-method}
+\alias{extract,list-method}
 \title{extract}
 \usage{
 extract(x, ...)
+
+\S4method{extract}{DataFile}(x)
+
+\S4method{extract}{list}(x, merge_col = "JOIN")
 }
 \arguments{
 \item{x}{.}
 
 \item{...}{.}
+
+\item{merge_col}{description}
 }
 \value{
 a Datafile obj

@@ -52,10 +52,12 @@ setValidity(
 
 # see generic set in 'ColMap' class
 # setGeneric("col_names", function(x) standardGeneric("col_names"))
+#' @rdname col_names
 setMethod("col_names", valueClass="character", "DataFile", function(x) names(col_map(x@mapping, only.active=TRUE)) )
 
 # see generic set in 'ColMap' class
 # setGeneric("col_map", function(x, ...) standardGeneric("col_map"))
+#' @rdname col_map
 setMethod(
   f = "col_map",
   signature = "DataFile",
@@ -97,6 +99,7 @@ setMethod(
 #' @export
 #'
 setGeneric("path", function(x) standardGeneric("path"))
+#' @rdname path
 setMethod("path", "DataFile", function(x) x@path)
 
 #' set path
@@ -108,6 +111,7 @@ setMethod("path", "DataFile", function(x) x@path)
 #' @export
 #'
 setGeneric("path<-", function(x, value) standardGeneric("path<-"))
+#' @rdname path-set
 setMethod("path<-", "DataFile", function(x, value) {
 
   x@path <- value
@@ -147,20 +151,18 @@ setMethod("mapping", "DataFile", function(x) x@mapping)
 #' @rdname mapping
 setMethod("mapping", "list", function(x) lapply(x, mapping))
 
+
 #' mapping
 #'
-#' @param x object
-#' @param value the map
+#' @param x .
+#' @param value .
 #'
-#' @return obj
+#' @return .
 #' @export
 #'
 setGeneric("mapping<-", function(x, value) standardGeneric("mapping<-"))
-#' @rdname mapping<-
-setMethod(
-  f = "mapping<-",
-  signature = "list",
-  definition = function(x, value) {
+#' @rdname mapping-set
+setMethod("mapping<-", "list", function(x, value) {
 
     stopifnot("mapping value must be length==1 or length==length(x)" = length(value)==1 | length(value)==length(x))
 
@@ -172,9 +174,8 @@ setMethod(
 
     }
     return(x)
-  }
-)
-#' @rdname mapping<-
+  })
+#' @rdname mapping-set
 setMethod("mapping<-", "DataFile", function(x, value) {
 
   x@mapping <- value
@@ -186,6 +187,22 @@ setMethod("mapping<-", "DataFile", function(x, value) {
 
   }
 
+  validObject(x)
+  x
+})
+
+#' set_data
+#'
+#' @param x .
+#' @param value .
+#'
+#' @return .
+#' @export
+#'
+setGeneric("set_data<-", function(x, value) standardGeneric("set_data<-"))
+#' @rdname set_data-set
+setMethod("set_data<-", "DataFile", function(x, value) {
+  x@data <- value
   validObject(x)
   x
 })
@@ -264,23 +281,6 @@ setMethod(
   }
 )
 
-#' set_data
-#'
-#' @param x .
-#' @param value .
-#'
-#' @return DataFile object
-#' @export
-#'
-setGeneric("set_data<-", function(x, value) standardGeneric("set_data<-"))
-#' @rdname set_data<-
-setMethod("set_data<-", "DataFile", function(x, value) {
-  x@data <- value
-  validObject(x)
-  x
-})
-
-
 #' write_file
 #'
 #' @param x .
@@ -352,11 +352,13 @@ setMethod("free", "DataFile", function(x) {
 #'
 #' @param x .
 #' @param ... .
+#' @param merge_col description
 #'
 #' @return a Datafile obj
 #' @export
 #'
 setGeneric("extract", function(x, ...) standardGeneric("extract"))
+#' @rdname extract
 setMethod(
   f = "extract",
   signature = "DataFile",
@@ -423,7 +425,7 @@ setMethod(
     return(x)
   }
 )
-
+#' @rdname extract
 setMethod(
   f = "extract",
   signature = "list",

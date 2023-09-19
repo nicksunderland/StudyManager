@@ -180,8 +180,6 @@ setMethod("col_names", "ColMap", function(x) names(col_map(x, only.active=TRUE))
 #' @export
 #'
 setGeneric("col_map", function(x, ...) standardGeneric("col_map"))
-#' @param ColMap
-#'
 #' @rdname col_map
 setMethod(
   f = "col_map",

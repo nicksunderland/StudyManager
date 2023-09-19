@@ -2,17 +2,23 @@
 % Please edit documentation in R/class_datafile.R
 \name{mapping<-}
 \alias{mapping<-}
+\alias{mapping<-,list-method}
+\alias{mapping<-,DataFile-method}
 \title{mapping}
 \usage{
 mapping(x) <- value
+
+\S4method{mapping}{list}(x) <- value
+
+\S4method{mapping}{DataFile}(x) <- value
 }
 \arguments{
-\item{x}{object}
+\item{x}{.}
 
-\item{value}{the map}
+\item{value}{.}
 }
 \value{
-obj
+.
 }
 \description{
 mapping

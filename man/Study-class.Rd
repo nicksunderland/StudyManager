@@ -4,22 +4,28 @@
 \name{Study-class}
 \alias{Study-class}
 \alias{Study}
-\title{Title}
+\title{Study virtual class}
 \value{
 object
 }
 \description{
-Title
+Study virtual class
 }
 \section{Slots}{
 
 \describe{
 \item{\code{dir}}{character.}
 
-\item{\code{pmid}}{integer.}
-
 \item{\code{file_structure}}{list.}
 
 \item{\code{data_files}}{list.}
+
+\item{\code{pre_qc_dir}}{.}
+
+\item{\code{post_qc_dir}}{.}
+
+\item{\code{mapping}}{.}
+
+\item{\code{qc_data_files}}{.}
 }}
 

@@ -1,6 +1,14 @@
 #' Title
 #'
-#' @slot parameter numeric.
+#' @slot qc_freq_threshold .
+#' @slot qc_low_events_n ,
+#' @slot qc_freq_low_events_thresh .
+#' @slot qc_freq_ambig_thresh .
+#' @slot qc_qual_threshold .
+#' @slot qc_call_rate_threshold .
+#' @slot qc_freq_diff_threshold .
+#' @slot ref_path .
+#' @slot ref_data_file .
 #'
 #' @return object
 #' @export
@@ -66,52 +74,16 @@ setMethod(
 )
 
 
+#' run_qc
+#'
+#' @param object .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("run_qc", function(object, ...) standardGeneric("run_qc"))
-# setMethod(
-#   f = "run_qc",
-#   signature = "StudyCorpus",
-#   definition = function(object, ..., parallel_cores=NA_integer_) {
-#
-#     stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
-#
-#     if(!is.na(parallel_cores)) {
-#       writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
-#       `%do_or_dopar%` <- foreach::`%dopar%`
-#       cores <- parallel::detectCores()
-#
-#       if(parallel_cores > cores) {
-#         rlog::log_warn(glue::glue("Specified number of cores [{parallel_cores}] is more than the detected cores [{cores}]. Using {cores-1}..."))
-#         cores <- cores - 1
-#       } else {
-#         cores <- as.integer(parallel_cores)
-#
-#       }
-#       cl <- parallel::makeForkCluster(cores)
-#       doParallel::registerDoParallel(cl)
-#     } else {
-#       `%do_or_dopar%` <- foreach::`%do%`
-#     }
-#
-#     object@studies <- foreach::foreach(study = object@studies,
-#                                        .combine='list',
-#                                        .final = function(x) setNames(study, names(object@studies))) %do_or_dopar% {
-#
-#       if(!is.na(parallel_cores)) sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
-#
-#       run_qc(study, ...)
-#
-#     }
-#
-#     if(!is.na(parallel_cores)) {
-#       sink()
-#       parallel::stopCluster(cl)
-#     }
-#
-#     # return
-#     validObject(object)
-#     return(object)
-#   }
-# )
+#' @rdname run_qc
 setMethod(
   f = "run_qc",
   signature = "GWASsumstats",
@@ -191,17 +163,16 @@ setMethod(
 
 
 # don't export this method, just for internal class use
-#' Title
+#' easy_qc
 #'
 #' @param object GWASsumstats oobject
-#' @param ... data_file keys
+#' @param keys description
 #'
 #' @return GWASsumstats oobject
 #' @import rlog
 #' @export
 #'
 setGeneric("easy_qc", function(object, keys) standardGeneric("easy_qc"))
-
 #' @rdname easy_qc
 setMethod(
   f = "easy_qc",
@@ -396,45 +367,17 @@ setMethod(
 )
 
 
+#' run_qc_plots
+#'
+#' @param object .
+#' @param output_dir .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("run_qc_plots", function(object, output_dir, ...) standardGeneric("run_qc_plots"))
-# setMethod(
-#   f = "run_qc_plots",
-#   signature = c("StudyCorpus", "character"),
-#   definition = function(object, output_dir, ..., parallel_cores=NA_integer_) {
-#
-#     stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
-#
-#     if(!is.na(parallel_cores)) {
-#       writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
-#       `%do_or_dopar%` <- foreach::`%dopar%`
-#       cores <- parallel::detectCores()
-#       if(parallel_cores > cores) {
-#         rlog::log_warn(glue::glue("Specified number of cores [{parallel_cores}] is more than the detected cores [{cores}]. Using {cores-1}..."))
-#         cores <- cores - 1
-#       } else {
-#         cores <- as.integer(parallel_cores)
-#       }
-#       cl <- parallel::makeForkCluster(cores)
-#       doParallel::registerDoParallel(cl)
-#     } else {
-#       `%do_or_dopar%` <- foreach::`%do%`
-#     }
-#
-#     foreach::foreach(study = object@studies) %do_or_dopar% {
-#
-#       if(!is.na(parallel_cores)) sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
-#
-#       run_qc_plots(study, output_dir, ...)
-#
-#
-#     }
-#     if(!is.na(parallel_cores)) {
-#       sink()
-#       parallel::stopCluster(cl)
-#     }
-#
-#   }
-# )
+#' @rdname run_qc_plots
 setMethod(
   f = "run_qc_plots",
   signature = c("GWASsumstats", "character"),
@@ -557,7 +500,17 @@ setMethod(
   }
 )
 
+#' create_impqualhist
+#'
+#' @param dt .
+#' @param file_path .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("create_impqualhist", function(dt, file_path=getwd(), ...) standardGeneric("create_impqualhist"))
+#' @rdname create_impqualhist
 setMethod(
   f = "create_impqualhist",
   signature = c("data.table"),
@@ -593,7 +546,18 @@ setMethod(
   }
 )
 
+#' create_eafplot
+#'
+#' @param dt .
+#' @param file_path .
+#' @param threshold .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("create_eafplot", function(dt, file_path=getwd(), threshold=0.2, ...) standardGeneric("create_eafplot"))
+#' @rdname create_eafplot
 setMethod(
   f = "create_eafplot",
   signature = c("data.table"),
@@ -635,7 +599,17 @@ setMethod(
     invisible(plot)
 })
 
+#' create_eshist
+#'
+#' @param dt .
+#' @param file_path .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("create_eshist", function(dt, file_path=getwd(), ...) standardGeneric("create_eshist"))
+#' @rdname create_eshist
 setMethod(
   f = "create_eshist",
   signature = c("data.table"),
@@ -675,7 +649,17 @@ setMethod(
     invisible(plot)
 })
 
+#' create_pvalhist
+#'
+#' @param dt .
+#' @param file_path .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("create_pvalhist", function(dt, file_path=getwd(), ...) standardGeneric("create_pvalhist"))
+#' @rdname create_pvalhist
 setMethod(
   f = "create_pvalhist",
   signature = c("data.table"),
@@ -709,7 +693,17 @@ setMethod(
   }
 )
 
+#' create_qq
+#'
+#' @param dt .
+#' @param file_path .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("create_qq", function(dt, file_path=getwd(), ...) standardGeneric("create_qq"))
+#' @rdname create_qq
 setMethod(
   f = "create_qq",
   signature = c("data.table"),
@@ -763,7 +757,18 @@ setMethod(
   }
 )
 
+#' create_manhattan
+#'
+#' @param dt .
+#' @param file_path .
+#' @param highlight .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
 setGeneric("create_manhattan", function(dt, file_path=getwd(), highlight=NULL, ...) standardGeneric("create_manhattan"))
+#' @rdname create_manhattan
 setMethod(
   f = "create_manhattan",
   signature = c("data.table"),
@@ -854,3 +859,90 @@ setMethod(
 )
 
 
+
+
+# setMethod(
+#   f = "run_qc_plots",
+#   signature = c("StudyCorpus", "character"),
+#   definition = function(object, output_dir, ..., parallel_cores=NA_integer_) {
+#
+#     stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
+#
+#     if(!is.na(parallel_cores)) {
+#       writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
+#       `%do_or_dopar%` <- foreach::`%dopar%`
+#       cores <- parallel::detectCores()
+#       if(parallel_cores > cores) {
+#         rlog::log_warn(glue::glue("Specified number of cores [{parallel_cores}] is more than the detected cores [{cores}]. Using {cores-1}..."))
+#         cores <- cores - 1
+#       } else {
+#         cores <- as.integer(parallel_cores)
+#       }
+#       cl <- parallel::makeForkCluster(cores)
+#       doParallel::registerDoParallel(cl)
+#     } else {
+#       `%do_or_dopar%` <- foreach::`%do%`
+#     }
+#
+#     foreach::foreach(study = object@studies) %do_or_dopar% {
+#
+#       if(!is.na(parallel_cores)) sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
+#
+#       run_qc_plots(study, output_dir, ...)
+#
+#
+#     }
+#     if(!is.na(parallel_cores)) {
+#       sink()
+#       parallel::stopCluster(cl)
+#     }
+#
+#   }
+# )
+
+
+# setMethod(
+#   f = "run_qc",
+#   signature = "StudyCorpus",
+#   definition = function(object, ..., parallel_cores=NA_integer_) {
+#
+#     stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
+#
+#     if(!is.na(parallel_cores)) {
+#       writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
+#       `%do_or_dopar%` <- foreach::`%dopar%`
+#       cores <- parallel::detectCores()
+#
+#       if(parallel_cores > cores) {
+#         rlog::log_warn(glue::glue("Specified number of cores [{parallel_cores}] is more than the detected cores [{cores}]. Using {cores-1}..."))
+#         cores <- cores - 1
+#       } else {
+#         cores <- as.integer(parallel_cores)
+#
+#       }
+#       cl <- parallel::makeForkCluster(cores)
+#       doParallel::registerDoParallel(cl)
+#     } else {
+#       `%do_or_dopar%` <- foreach::`%do%`
+#     }
+#
+#     object@studies <- foreach::foreach(study = object@studies,
+#                                        .combine='list',
+#                                        .final = function(x) setNames(study, names(object@studies))) %do_or_dopar% {
+#
+#       if(!is.na(parallel_cores)) sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
+#
+#       run_qc(study, ...)
+#
+#     }
+#
+#     if(!is.na(parallel_cores)) {
+#       sink()
+#       parallel::stopCluster(cl)
+#     }
+#
+#     # return
+#     validObject(object)
+#     return(object)
+#   }
+# )

@@ -14,6 +14,22 @@ Title
 \section{Slots}{
 
 \describe{
-\item{\code{parameter}}{numeric.}
+\item{\code{qc_freq_threshold}}{.}
+
+\item{\code{qc_low_events_n}}{,}
+
+\item{\code{qc_freq_low_events_thresh}}{.}
+
+\item{\code{qc_freq_ambig_thresh}}{.}
+
+\item{\code{qc_qual_threshold}}{.}
+
+\item{\code{qc_call_rate_threshold}}{.}
+
+\item{\code{qc_freq_diff_threshold}}{.}
+
+\item{\code{ref_path}}{.}
+
+\item{\code{ref_data_file}}{.}
 }}
 
