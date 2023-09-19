@@ -1,39 +1,6 @@
 load_all()
 
-
-corpus <- StudyCorpus(corpus_dir = "/Users/xx20081/Documents/local_data/hermes_progression",
-                      study_type = "GWASsumstats",
-                      ref_path = "/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz",
-                      file_structure = list(
-                        "allcause_death" = list(
-                          "autosomes" = "(?i)^(?!.*(?:fe)?male).*allcause.*",
-                          "xchr_male" = "(?i)^(?=.*allcause)(?=.*male)(?!.*female).*",
-                          "xchr_female" = "(?i)^(?=.*allcause)(?=.*female).*"
-                        ),
-                        "composite_1" = list(
-                          "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?1.*",
-                          "xchr_male" = "(?i)^(?=.*comp(?:osite)?1)(?=.*male)(?!.*female).*",
-                          "xchr_female" = "(?i)^(?=.*comp(?:osite)?1)(?=.*female).*"
-                        ),
-                        "composite_2" = list(
-                          "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?2.*",
-                          "xchr_male" = "(?i)^(?=.*comp(?:osite)?2)(?=.*male)(?!.*female).*",
-                          "xchr_female" = "(?i)^(?=.*comp(?:osite)?2)(?=.*female).*"
-                        )
-                      )
-)
-
-corpus <- run_qc(corpus, parallel_cores=4)
-
-run_qc_plots(corpus, "/Users/xx20081/git/thesis/vignettes/figures", c("allcause_death", "composite_1", "composite_2") ) #, parallel_cores=4)
-
-
-
-
-
-
-load_all()
-s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/bioshift_triumph",
+s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/solid",
                   ref_path = "/Users/xx20081/Downloads/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz",
                   pre_qc_dir = "pre_qc",
                   post_qc_dir = "post_qc",
@@ -44,14 +11,14 @@ s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/bioshift_tr
                       "xchr_female" = "(?i)^(?=.*allcause)(?=.*female).*"
                     ),
                     "composite_1" = list(
-                      "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp1.*",
-                      "xchr_male" = "(?i)^(?=.*comp1)(?=.*male)(?!.*female).*",
-                      "xchr_female" = "(?i)^(?=.*comp1)(?=.*female).*"
+                      "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?1.*",
+                      "xchr_male" = "(?i)^(?=.*comp(?:osite)?1)(?=.*male)(?!.*female).*",
+                      "xchr_female" = "(?i)^(?=.*comp(?:osite)?1)(?=.*female).*"
                     ),
                     "composite_2" = list(
-                      "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp2.*",
-                      "xchr_male" = "(?i)^(?=.*comp2)(?=.*male)(?!.*female).*",
-                      "xchr_female" = "(?i)^(?=.*comp2)(?=.*female).*"
+                      "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?2.*",
+                      "xchr_male" = "(?i)^(?=.*comp(?:osite)?2)(?=.*male)(?!.*female).*",
+                      "xchr_female" = "(?i)^(?=.*comp(?:osite)?2)(?=.*female).*"
                     )
                   )
 )
@@ -60,6 +27,47 @@ s <- run_qc(s)
 
 #### QC plots
 run_qc_plots(s, "/Users/xx20081/Downloads/figures", c("allcause_death", "composite_1", "composite_2"))
+
+
+
+
+
+
+
+#
+# corpus <- StudyCorpus(corpus_dir = "/Users/xx20081/Documents/local_data/hermes_progression",
+#                       study_type = "GWASsumstats",
+#                       ref_path = "/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz",
+#                       file_structure = list(
+#                         "allcause_death" = list(
+#                           "autosomes" = "(?i)^(?!.*(?:fe)?male).*allcause.*",
+#                           "xchr_male" = "(?i)^(?=.*allcause)(?=.*male)(?!.*female).*",
+#                           "xchr_female" = "(?i)^(?=.*allcause)(?=.*female).*"
+#                         ),
+#                         "composite_1" = list(
+#                           "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?1.*",
+#                           "xchr_male" = "(?i)^(?=.*comp(?:osite)?1)(?=.*male)(?!.*female).*",
+#                           "xchr_female" = "(?i)^(?=.*comp(?:osite)?1)(?=.*female).*"
+#                         ),
+#                         "composite_2" = list(
+#                           "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?2.*",
+#                           "xchr_male" = "(?i)^(?=.*comp(?:osite)?2)(?=.*male)(?!.*female).*",
+#                           "xchr_female" = "(?i)^(?=.*comp(?:osite)?2)(?=.*female).*"
+#                         )
+#                       )
+# )
+#
+# corpus <- run_qc(corpus, parallel_cores=4)
+#
+# run_qc_plots(corpus, "/Users/xx20081/git/thesis/vignettes/figures", c("allcause_death", "composite_1", "composite_2") ) #, parallel_cores=4)
+#
+#
+
+
+
+
+load_all()
+
 
 
 
