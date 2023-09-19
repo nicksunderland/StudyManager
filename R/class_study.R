@@ -9,6 +9,7 @@
 #' @slot qc_data_files .
 #'
 #' @return object
+#' @importFrom methods .valueClassTest slotNames
 #' @export
 #'
 Study <- setClass(

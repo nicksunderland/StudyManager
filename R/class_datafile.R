@@ -355,6 +355,7 @@ setMethod("free", "DataFile", function(x) {
 #' @param merge_col description
 #'
 #' @return a Datafile obj
+#' @importFrom stats setNames
 #' @export
 #'
 setGeneric("extract", function(x, ...) standardGeneric("extract"))

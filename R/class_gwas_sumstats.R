@@ -554,6 +554,8 @@ setMethod(
 #' @param ... .
 #'
 #' @return .
+#' @importFrom stats setNames
+#' @import ggplot2
 #' @export
 #'
 setGeneric("create_eafplot", function(dt, file_path=getwd(), threshold=0.2, ...) standardGeneric("create_eafplot"))
@@ -571,7 +573,7 @@ setMethod(
     palette <- c(wesanderson::wes_palette("GrandBudapest1"), wesanderson::wes_palette("GrandBudapest2"))
     #c("#F1BB7B", "#FD6467", "#5B1A18", "#D67236", "#E6A0C4", "#C6CDF7", "#D8A499", "#7294D4")
 
-    colour_labels <- setNames(c(palette[3],palette[2],palette[8]),
+    colour_labels <- stats::setNames(c(palette[3],palette[2],palette[8]),
                               c("No reference data", "EAF outlier", "EAF within tolerance"))
 
     # plot
