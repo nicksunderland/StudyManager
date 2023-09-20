@@ -2,7 +2,7 @@
 % Please edit documentation in R/class_col_map.R
 \name{add_col}
 \alias{add_col}
-\alias{add_col,ColMap,character,character,function-method}
+\alias{add_col,ColMap,character,character,function,list-method}
 \title{add_col}
 \usage{
 add_col(
@@ -15,7 +15,7 @@ add_col(
   overwrite = FALSE
 )
 
-\S4method{add_col}{ColMap,character,character,`function`}(
+\S4method{add_col}{ColMap,character,character,`function`,list}(
   x,
   col_name,
   col_type,

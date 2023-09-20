@@ -36,3 +36,4 @@ Collate:
     'class_gwas_sumstats.R'
     'class_studycorpus.R'
     'histogram_w_outlier_bins.R'
+    'zzz.R'

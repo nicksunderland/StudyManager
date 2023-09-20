@@ -12,6 +12,7 @@
 #'
 #' @return object
 #' @export
+#' @exportClass GWASsumstats
 #' @importFrom methods callNextMethod
 #' @include class_study.R
 #'
@@ -117,7 +118,7 @@ setMethod(
     # update the the ref_data_file with this new tmp file path as the source
     path(object@ref_data_file) <- tmp_ref_path
 
-    # create an output directory if it doesn't exist; or clean up (delete) if it does
+    # # create an output directory if it doesn't exist; or clean up (delete) if it does
     output_dir <- file.path(object@dir, object@post_qc_dir)
     if(!dir.exists(output_dir)) {
 
@@ -182,6 +183,10 @@ setMethod(
     # ensure valid keys into the data_file structure
     rlog::log_info(glue::glue("Running EASYQC for DataFile{paste0('[',keys,']',collapse='')}"))
     stopifnot(keys_valid(object, keys))
+    if(length(object@data_files[[ keys ]])!=1) {
+      rlog::log_error(glue::glue("QC is done on a per file basis, keys should give one file but {basename(object@dir)}{paste0('[',keys,']')} gave {length(object@data_files[[ keys ]])}, {paste0(names(object@data_files[[ keys ]]), collapse=', ')}"))
+      stop()
+    }
 
     # ensure required columns activated
     map <- mapping(object@data_files[[ keys ]]) # from each DataFile map as could be different
@@ -421,7 +426,7 @@ setMethod(
       # No data, skip
       if(length(object@data_files[[ keys ]]) == 0 | length(object@qc_data_files[[ keys ]]) == 0) {
 
-        rlog::log_warn(glue::glue("No DataFile found for {basename(object@dir)}[{paste0('[',keys,']',collapse='')}]: Pre-QC: {length(object@data_files[[ keys ]])} files, Post-QC: {length(object@qc_data_files[[ keys ]])} files --> skipping..."))
+        rlog::log_warn(glue::glue("No DataFile found for {basename(object@dir)}{paste0('[',keys,']',collapse='')}: Pre-QC: {length(object@data_files[[ keys ]])} files, Post-QC: {length(object@qc_data_files[[ keys ]])} files --> skipping..."))
         next
 
       }
@@ -429,10 +434,7 @@ setMethod(
       # set the mapping with the required columns for analysis
       req_cols <- c("cptid","SNP","CHR","BP","P","BETA","INFO","FRQ")
       maps <- mapping(object@data_files[[ keys ]])
-      if(!is.list(maps)) {
-        maps <- list(maps) # if a low level key there will be only one map
-      }
-      maps <- lapply(maps, set_active, col_names=req_cols)
+      maps <- set_active(maps, req_cols)
 
       # the pre-QC data, chromosomes merged
       rlog::log_debug(glue::glue("Extracting pre-qc plot data data_files{paste0('[',keys,']',collapse='')}"))
@@ -504,7 +506,6 @@ setMethod(
                      threshold = object@qc_freq_diff_threshold,
                      file_path = paste0(output_path, "_qc_eaf_plot.png"),
                      title = paste0(c("Allele frequency -", basename(object@dir), keys), collapse=" "))
-
 
 
     }
@@ -834,21 +835,26 @@ setMethod(
       dplyr::summarize(center=( max(BPcum) + min(BPcum) ) / 2 )
 
     # Make the plot
-    plot <- ggplot2::ggplot(d, ggplot2::aes(x=BPcum, y=-log10(P))) +
-
+    plot <- ggplot2::ggplot(d, ggplot2::aes(x=BPcum, # as.factor(CHR),
+                                            y=-log10(P))) +  #
       # Show all points
+      #ggplot2::geom_jitter(width = 0.43)  +
       ggplot2::geom_point( ggplot2::aes(color=as.factor(CHR)), alpha=0.8, size=1.3) +
       ggplot2::scale_color_manual(values = rep(c(palette[5], palette[6]), 22 )) +
 
-      # custom X axis:
+      # # custom X axis:
+      #ggplot2::scale_y_continuous(expand = c(0, 0.025)) +
       ggplot2::scale_x_continuous( label = axisdf$CHR, breaks= axisdf$center ) +
       ggplot2::scale_y_continuous(expand = c(0, 0) ) +     # remove space between plot area and x axis
 
-      # Add highlighted points
-      ggplot2::geom_point(data=subset(d, is_highlight=="yes"), color="orange", size=2) +
-
-      # Add label using ggrepel to avoid overlapping
-      ggrepel::geom_label_repel( data=subset(d, is_annotate=="yes"), ggplot2::aes(label=SNP), size=2) +
+      geom_hline(yintercept = -log10(5e-8), linetype = "dashed", color = "red3") +
+      geom_hline(yintercept = -log10(5e-5), linetype = "dashed", color = "darkblue") +
+      #
+      # # Add highlighted points
+      ggplot2::geom_point(data=subset(d, is_highlight=="yes"), shape=4, alpha=0.5,  color="grey2", size=2) +
+      #
+      # # Add label using ggrepel to avoid overlapping
+      ggrepel::geom_label_repel( data=subset(d, is_annotate=="yes"), ggplot2::aes(label=SNP), colour="black", size=3) +
 
       # Custom the theme:
       ggplot2::theme_minimal() +
@@ -860,8 +866,10 @@ setMethod(
         legend.position="none",
         panel.border = element_blank(),
         panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()
-      )
+        panel.grid.minor.x = element_blank(),
+        strip.text.x = element_blank()
+      ) +
+      ggplot2::facet_grid(cols=vars(CHR), scales="free_x", space="free_x")
 
     # save plot
     grDevices::png(filename=file_path, bg="white", height=500, width=1200, units="px")
@@ -873,91 +881,3 @@ setMethod(
   }
 )
 
-
-
-
-# setMethod(
-#   f = "run_qc_plots",
-#   signature = c("StudyCorpus", "character"),
-#   definition = function(object, output_dir, ..., parallel_cores=NA_integer_) {
-#
-#     stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
-#
-#     if(!is.na(parallel_cores)) {
-#       writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
-#       `%do_or_dopar%` <- foreach::`%dopar%`
-#       cores <- parallel::detectCores()
-#       if(parallel_cores > cores) {
-#         rlog::log_warn(glue::glue("Specified number of cores [{parallel_cores}] is more than the detected cores [{cores}]. Using {cores-1}..."))
-#         cores <- cores - 1
-#       } else {
-#         cores <- as.integer(parallel_cores)
-#       }
-#       cl <- parallel::makeForkCluster(cores)
-#       doParallel::registerDoParallel(cl)
-#     } else {
-#       `%do_or_dopar%` <- foreach::`%do%`
-#     }
-#
-#     foreach::foreach(study = object@studies) %do_or_dopar% {
-#
-#       if(!is.na(parallel_cores)) sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
-#
-#       run_qc_plots(study, output_dir, ...)
-#
-#
-#     }
-#     if(!is.na(parallel_cores)) {
-#       sink()
-#       parallel::stopCluster(cl)
-#     }
-#
-#   }
-# )
-
-
-# setMethod(
-#   f = "run_qc",
-#   signature = "StudyCorpus",
-#   definition = function(object, ..., parallel_cores=NA_integer_) {
-#
-#     stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
-#
-#     if(!is.na(parallel_cores)) {
-#       writeLines(c(""), "/Users/xx20081/Desktop/log.txt")
-#       `%do_or_dopar%` <- foreach::`%dopar%`
-#       cores <- parallel::detectCores()
-#
-#       if(parallel_cores > cores) {
-#         rlog::log_warn(glue::glue("Specified number of cores [{parallel_cores}] is more than the detected cores [{cores}]. Using {cores-1}..."))
-#         cores <- cores - 1
-#       } else {
-#         cores <- as.integer(parallel_cores)
-#
-#       }
-#       cl <- parallel::makeForkCluster(cores)
-#       doParallel::registerDoParallel(cl)
-#     } else {
-#       `%do_or_dopar%` <- foreach::`%do%`
-#     }
-#
-#     object@studies <- foreach::foreach(study = object@studies,
-#                                        .combine='list',
-#                                        .final = function(x) setNames(study, names(object@studies))) %do_or_dopar% {
-#
-#       if(!is.na(parallel_cores)) sink("/Users/xx20081/Desktop/log.txt", append=TRUE)
-#
-#       run_qc(study, ...)
-#
-#     }
-#
-#     if(!is.na(parallel_cores)) {
-#       sink()
-#       parallel::stopCluster(cl)
-#     }
-#
-#     # return
-#     validObject(object)
-#     return(object)
-#   }
-# )

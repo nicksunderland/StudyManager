@@ -2,22 +2,25 @@
 % Please edit documentation in R/class_datafile.R
 \name{extract}
 \alias{extract}
-\alias{extract,DataFile-method}
-\alias{extract,list-method}
+\alias{extract,DataFile,missing-method}
+\alias{extract,DataFile,character-method}
+\alias{extract,list,character-method}
 \title{extract}
 \usage{
-extract(x, ...)
+extract(x, merge_col)
 
-\S4method{extract}{DataFile}(x)
+\S4method{extract}{DataFile,missing}(x)
 
-\S4method{extract}{list}(x, merge_col = "JOIN")
+\S4method{extract}{DataFile,character}(x, merge_col = "JOIN")
+
+\S4method{extract}{list,character}(x, merge_col = "JOIN")
 }
 \arguments{
 \item{x}{.}
 
-\item{...}{.}
-
 \item{merge_col}{description}
+
+\item{...}{.}
 }
 \value{
 a Datafile obj

@@ -126,6 +126,16 @@ setGeneric("set_active", function(x, col_names, rest.off=TRUE) standardGeneric("
 #' @rdname set_active
 setMethod(
   f = "set_active",
+  signature = c("list", "character"),
+  definition = function(x, col_names, rest.off=TRUE) {
+    stopifnot("x must be a list of ColMap objects" = all(sapply(x, inherits, what="ColMap")))
+    x <- lapply(x, set_active, col_names=col_names, rest.off=rest.off)
+    return(x)
+  }
+)
+#' @rdname set_active
+setMethod(
+  f = "set_active",
   signature = c("ColMap", "character"),
   definition = function(x, col_names, rest.off=TRUE) {
 
@@ -252,7 +262,7 @@ setGeneric("add_col", function(x, col_name, col_type, func, aliases=list(col_nam
 #' @rdname add_col
 setMethod(
   f = "add_col",
-  signature = c("ColMap", "character", "character", "function"),
+  signature = c("ColMap", "character", "character", "function", "list"),
   definition = function(x, col_name, col_type, func, aliases=list(col_name), active=TRUE, overwrite=FALSE) {
 
     stopifnot("`col_name` must be a character" = is.character(col_name) & length(col_name)==1)
@@ -306,18 +316,23 @@ setMethod(
   signature = c("ColMap", "character"),
   definition = function(x, col_name) {
 
-    if(!col_name %in% names(x@aliases)) {
+    if(!all(col_name %in% names(x@aliases))) {
 
-      warning("`col_name` does not exist in ColMap")
+      warning("All `col_name(s)` do not exist in ColMap")
 
     } else {
 
-      name_filter <- names(x@aliases != col_name)
-
-      x@aliases <- x@aliases[name_filter]
-      x@col_type <- x@col_type[name_filter]
-      x@funcs <- x@funcs[name_filter]
+      name_filter <- names(x@aliases)[!names(x@aliases) %in% col_name]
+      a <- x@aliases[name_filter]
+      t <- x@col_types[name_filter]
+      f <- x@funcs[name_filter]
     }
+
+    x <- ColMap(active = x@active[name_filter],
+                aliases = x@aliases[name_filter],
+                col_types = x@col_types[name_filter],
+                funcs = x@funcs[name_filter],
+                col_fill = x@col_fill)
 
     validObject(x)
     return(x)

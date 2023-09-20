@@ -2,10 +2,13 @@
 % Please edit documentation in R/class_col_map.R
 \name{set_active}
 \alias{set_active}
+\alias{set_active,list,character-method}
 \alias{set_active,ColMap,character-method}
 \title{set_active}
 \usage{
 set_active(x, col_names, rest.off = TRUE)
+
+\S4method{set_active}{list,character}(x, col_names, rest.off = TRUE)
 
 \S4method{set_active}{ColMap,character}(x, col_names, rest.off = TRUE)
 }

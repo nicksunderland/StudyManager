@@ -166,7 +166,11 @@ setMethod("mapping<-", "list", function(x, value) {
 
     stopifnot("mapping value must be length==1 or length==length(x)" = length(value)==1 | length(value)==length(x))
 
-    value <- rep(as.list(value), length.out=length(x))
+    if(length(value) == 1) {
+
+      value <- rep(list(value), length.out=length(x))
+
+    }
 
     for(i in seq_along(x)) {
 
@@ -358,12 +362,14 @@ setMethod("free", "DataFile", function(x) {
 #' @importFrom stats setNames
 #' @export
 #'
-setGeneric("extract", function(x, ...) standardGeneric("extract"))
+setGeneric("extract", function(x, merge_col) standardGeneric("extract"))
 #' @rdname extract
 setMethod(
   f = "extract",
-  signature = "DataFile",
+  signature = c("DataFile", "missing"),
   definition = function(x) {
+
+    # ignore ..., this might get called with a merge_col
 
     if(length(x@path) > 1) {
 
@@ -429,7 +435,19 @@ setMethod(
 #' @rdname extract
 setMethod(
   f = "extract",
-  signature = "list",
+  signature = c("DataFile", "character"),
+  definition = function(x, merge_col="JOIN") {
+    # pass on
+    x <- extract(list(x), merge_col)
+    # return
+    validObject(x)
+    return(x)
+  }
+)
+#' @rdname extract
+setMethod(
+  f = "extract",
+  signature = c("list","character"),
   definition = function(x, merge_col="JOIN") {
 
     stopifnot(length(x) > 0)
