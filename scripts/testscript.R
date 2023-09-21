@@ -24,9 +24,9 @@ corpus <- StudyCorpus(corpus_dir = "/Users/xx20081/Downloads/hermes_progression"
 )
 
 
-corpus <- run_qc(corpus, index=1) # "allcause_death", "xchr_male",
+corpus <- run_qc(corpus, index=2) # "allcause_death", "xchr_male",
 
-corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_death", "composite_1", "composite_2"), index=1)
+corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_death"), index=2) #, "composite_1", "composite_2"
 
 corpus <- run_gwama(corpus, "/Users/xx20081/Downloads/meta_analysis_output", c("allcause_death", "composite_1", "composite_2"))
 
@@ -36,6 +36,9 @@ corpus <- run_gwama(corpus, "/Users/xx20081/Downloads/meta_analysis_output", c("
 #studies(corpus, "bioshift_triumph") <- run_qc( studies(corpus, "bioshift_triumph") )
 
 
+
+
+x = data.table::fread("/Users/xx20081/Downloads/hermes_progression/solid/pre_qc/allcause_chrN_solid.txt.gz")
 
 
 

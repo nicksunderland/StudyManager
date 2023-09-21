@@ -436,7 +436,7 @@ setMethod(
       }
 
       # set the mapping with the required columns for analysis
-      req_cols <- c("cptid","SNP","CHR","BP","P","BETA","INFO","FRQ")
+      req_cols <- c("cptid","SNP","EFFECT_ALLELE","OTHER_ALLELE","CHR","BP","P","BETA","INFO","FRQ")
       maps <- mapping(object@data_files[[ keys ]])
       maps <- set_active(maps, req_cols)
 
@@ -447,7 +447,15 @@ setMethod(
       mapping(object@data_files[[ keys ]]) <- maps
       data_file <- extract( object@data_files[[ keys ]], merge_col="CHR_FCT")
 
-      # the pre-QC data, chromosomes merged
+      # create the cptid for the pre-QC data, if it didn't exist
+      if(all(is.na( get_data(data_file)[["cptid"]] ))) {
+
+        get_data(data_file)[, "cptid" := ifelse(!(EFFECT_ALLELE %in% c("A", "G", "T", "C") & OTHER_ALLELE %in% c("A", "G", "T", "C")),
+                                                paste0(CHR, ":", BP, ":ID"),
+                                                paste0(CHR, ":", BP))]
+      }
+
+      # the post-QC data, chromosomes merged
       rlog::log_debug(glue::glue("Extracting post-qc plot data qc_data_files{paste0('[',keys,']',collapse='')}"))
       free( object@qc_data_files[[ keys ]] )
       mapping(object@qc_data_files[[ keys ]]) <- maps
@@ -809,7 +817,7 @@ setMethod(
     rlog::log_info("Manhattan plot...")
     rlog::log_info(glue::glue("Writing image to: {file_path}"))
 
-    dt <- dt |> dplyr::mutate(CHR = factor(CHR, levels=c(as.character(1:23),"X")))
+    dt <- dt |> dplyr::mutate(CHR = factor(CHR, levels=c(as.character(1:25),"X")))
 
     # Prepare the dataset
     d <- dt |>

@@ -437,20 +437,35 @@ setMethod(
     }
 
     # run the corpus
-    study_names <- names(studies(object, index))
-    studies(object) <- foreach::foreach(study = studies(object, index), .combine='c') %do_or_dopar% {
+    study_names <- names(studies(object))
+    studies(object) <- foreach::foreach(study    = studies(object),
+                                        name     = names(studies(object)),
+                                        i        = 1:length(object),
+                                        .inorder = TRUE,
+                                        .combine = 'c') %do_or_dopar% {
 
+      # if parallel, turn everything on, logging file will be put in corpus main directory
       if(!is.na(parallel_cores)) {
 
        sink(log_path, append=TRUE)
 
       }
 
-      list(run_qc(study, ...)) # return as list, then 'c' to combine ensures that loop of n=1 still returns a list
+      if(i %in% index) {
+
+        return( list(run_qc(study, ...)) ) # return as list, then 'c' to combine ensures that loop of n=1 still returns a list
+
+      } else {
+
+        return( list(study) ) # unprocessed
+
+      }
+
 
     }
     names(studies(object)) <- study_names
 
+    # if was parallel, turn everything off
     if(!is.na(parallel_cores)) {
 
       cluster(on=FALSE, cluster=cl)
