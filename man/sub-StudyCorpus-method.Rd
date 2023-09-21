@@ -7,7 +7,9 @@
 \S4method{[}{StudyCorpus}(x, i)
 }
 \arguments{
-\item{StudyCorpus}{.}
+\item{x}{..}
+
+\item{i}{.}
 }
 \value{
 .

@@ -22,7 +22,8 @@ Imports:
     rlog,
     tibble,
     wesanderson,
-    EasyX
+    EasyX,
+    doParallel
 Remotes:
     github::git@github.com:winkusch/EasyX
 Depends: 

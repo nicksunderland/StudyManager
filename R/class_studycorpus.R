@@ -3,6 +3,9 @@
 #' @slot corpus_dir character.
 #' @slot study_type character.
 #' @slot studies list.
+#' @slot results .
+#' @slot meta_quantitative .
+#' @slot meta_indel_alleles .
 #'
 #' @return StudyCorpus object
 #' @export
@@ -57,7 +60,8 @@ setMethod(
 
 #' Title
 #'
-#' @param StudyCorpus .
+#' @param x ..
+#' @param i .
 #'
 #' @return .
 #' @export
@@ -66,7 +70,8 @@ setMethod("[", "StudyCorpus", function(x, i) x@studies[i])
 
 #' Title
 #'
-#' @param StudyCorpus .
+#' @param x ..
+#' @param i ..
 #'
 #' @return .
 #' @export
@@ -76,6 +81,8 @@ setMethod("[[", "StudyCorpus", function(x, i) x@studies[[i]])
 #' studies
 #'
 #' @param object .
+#' @param ... .
+#' @param index .
 #'
 #' @return .
 #' @export
@@ -108,13 +115,16 @@ setMethod("studies", "StudyCorpus", function(object, index=NULL) {
 
 #' studies-set
 #'
-#' @param object .
+#' @param x .
+#' @param value .
+#' @param ... . .
+#' @param index .
 #'
 #' @return .
 #' @export
 #'
 setGeneric("studies<-", function(x, value, ...) standardGeneric("studies<-"))
-#' @rdname studies
+#' @rdname studies-set
 setMethod("studies<-", "StudyCorpus", function(x, value, index=NULL) {
 
   if(is.null(index)) {
@@ -144,7 +154,7 @@ setMethod("studies<-", "StudyCorpus", function(x, value, index=NULL) {
 
 #' length
 #'
-#' @param StudyCorpus .
+#' @param x ..
 #'
 #' @return .
 #' @export
@@ -398,7 +408,7 @@ cluster <- function(on, cluster=NULL, cores=NA_real_) {
   }
 }
 
-
+#' @rdname run_qc
 setMethod(
   f = "run_qc",
   signature = "StudyCorpus",
@@ -455,7 +465,7 @@ setMethod(
 )
 
 
-
+#' @rdname run_qc_plots
 setMethod(
   f = "run_qc_plots",
   signature = c("StudyCorpus", "character"),

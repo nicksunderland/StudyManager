@@ -79,6 +79,8 @@ setMethod(
 #'
 #' @param object .
 #' @param ... .
+#' @param index .
+#' @param parallel_cores .
 #'
 #' @return .
 #' @export
@@ -382,6 +384,8 @@ setMethod(
 #' @param object .
 #' @param output_dir .
 #' @param ... .
+#' @param index .
+#' @param parallel_cores .
 #'
 #' @return .
 #' @export

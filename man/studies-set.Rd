@@ -2,12 +2,21 @@
 % Please edit documentation in R/class_studycorpus.R
 \name{studies<-}
 \alias{studies<-}
+\alias{studies<-,StudyCorpus-method}
 \title{studies-set}
 \usage{
 studies(x, ...) <- value
+
+\S4method{studies}{StudyCorpus}(x, index = NULL) <- value
 }
 \arguments{
-\item{object}{.}
+\item{x}{.}
+
+\item{value}{.}
+
+\item{...}{. .}
+
+\item{index}{.}
 }
 \value{
 .

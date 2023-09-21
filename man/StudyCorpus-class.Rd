@@ -19,5 +19,11 @@ Title
 \item{\code{study_type}}{character.}
 
 \item{\code{studies}}{list.}
+
+\item{\code{results}}{.}
+
+\item{\code{meta_quantitative}}{.}
+
+\item{\code{meta_indel_alleles}}{.}
 }}
 

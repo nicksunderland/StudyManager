@@ -3,17 +3,18 @@
 \name{studies}
 \alias{studies}
 \alias{studies,StudyCorpus-method}
-\alias{studies<-,StudyCorpus-method}
 \title{studies}
 \usage{
 studies(object, ...)
 
 \S4method{studies}{StudyCorpus}(object, index = NULL)
-
-\S4method{studies}{StudyCorpus}(x, index = NULL) <- value
 }
 \arguments{
 \item{object}{.}
+
+\item{...}{.}
+
+\item{index}{.}
 }
 \value{
 .
