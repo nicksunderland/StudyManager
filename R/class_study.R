@@ -217,7 +217,12 @@ setMethod("get_data_keys", "character", function(input, ...) {
 setGeneric("keys_valid", function(object, keys, ...) standardGeneric("keys_valid"))
 #' @rdname keys_valid
 setMethod("keys_valid", c("Study", "list"), function(object, keys){
+
     stopifnot("An empty list is not a valid key" = length(keys) > 0)
+
+    # foo=sapply(keys, keys_valid, object=object)
+    # print(foo)
+
     test_all = all(sapply(keys, keys_valid, object=object))
     return(test_all)
   })
@@ -227,7 +232,8 @@ setMethod("keys_valid", c("Study", "character"), function(object, keys, ...){
     tryCatch(
       expr = {
         # ... more keys
-        test <- object@data_files[[ c(keys, ...) ]]
+        test_key <- c(keys, ...)
+        test <- object@data_files[[ test_key ]]
         if(is.null(test)) {
           stop()
         } else {
@@ -235,14 +241,6 @@ setMethod("keys_valid", c("Study", "character"), function(object, keys, ...){
         }
       },
       error = function(e) {
-        levels_list <- c(list(keys), list(...))
-        keys_df <- expand.grid(levels_list)
-        keys_list <- unname(as.list(as.data.frame(t(keys_df))))
-
-        # return
-        return(keys_list)
-
-
         rlog::log_error(glue::glue("invalid keys: c({paste0('\"', c(keys, ...), '\"', collapse=', ')}). Possible keys: {paste(get_data_keys(object), collapse=', ')}"))
         return(FALSE)
       }

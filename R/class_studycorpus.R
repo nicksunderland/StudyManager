@@ -152,6 +152,41 @@ setMethod("studies<-", "StudyCorpus", function(x, value, index=NULL) {
   }
 })
 
+#' results
+#'
+#' @param object .
+#' @param ... .
+#' @param index .
+#'
+#' @return .
+#' @export
+#'
+setGeneric("results", function(object, ...) standardGeneric("results"))
+#' @rdname results
+setMethod("results", "StudyCorpus", function(object, index=NULL) {
+
+  if(is.null(index)) {
+
+    return(object@results)
+
+  } else {
+
+    tryCatch(
+      expr = {
+        result <- object@results[index]
+        if(is.null(result) | length(result)==0) stop()
+        return(result)
+
+      },
+      error = function(e) {
+
+        rlog::log_error(glue::glue("Index error, object@results[`{index}`] is not defined"))
+
+      }
+    )
+  }
+})
+
 #' length
 #'
 #' @param x ..
@@ -262,6 +297,7 @@ setMethod(
       rlog::log_debug(glue::glue("DataFile keys to process for meta-analysis: {basename(study@dir)}, {paste0(lapply(data_file_keys, paste0, collapse=','), collapse=' | ')}"))
       stopifnot(keys_valid(study, data_file_keys))
 
+
       # for each key, process, each key will need a separate meta-analysis
       for(keys in data_file_keys) {
 
@@ -358,7 +394,7 @@ setMethod(
       gwama_map <- set_active(gwama_map, c("SNP","EFFECT_ALLELE","OTHER_ALLELE","FRQ","BETA","SE","BETA_95L","BETA_95U","Z","P","LOG10_P","Q_STATISTIC","Q_P_VALUE","HETISQT","N","N_CAS","DIRECTION"))
 
       # create the results file
-      corpus@results[[key_str]] <- DataFile(path = gwama.out_file,
+      corpus@results[[key_str]] <- DataFile(path = paste0(gwama.out_file, ".out"),
                                             mapping = gwama_map)
 
     }
@@ -528,3 +564,102 @@ setMethod(
   }
 )
 
+
+
+
+
+
+
+#' run_meta_plots
+#'
+#' @param object .
+#' @param output_dir .
+#' @param ... .
+#' @param index .
+#' @param parallel_cores .
+#'
+#' @return True
+#' @export
+#'
+setGeneric("run_meta_plots", function(object, output_dir, index=NULL, parallel_cores=NA_integer_) standardGeneric("run_meta_plots"))
+#' @rdname run_meta_plots
+setMethod(
+  f = "run_meta_plots",
+  signature = c("StudyCorpus", "character"),
+  definition = function(object, output_dir, index=NULL, parallel_cores=NA_integer_) {
+
+    rlog::log_info("Running run_meta_plots(`StudyCorpus`)...")
+
+    stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
+
+    if(!is.na(parallel_cores)) {
+
+      log_path <- file.path(object@corpus_dir, '__log_run_qc_plots.txt')
+      writeLines(c(""), log_path)
+      cl <- cluster(on=TRUE)
+      `%do_or_dopar%` <- foreach::`%dopar%`
+
+    } else {
+
+      `%do_or_dopar%` <- foreach::`%do%`
+
+    }
+
+    outcome_names = names(results(object, index))
+    foreach::foreach(result = results(object, index), name = outcome_names) %do_or_dopar% {
+
+      if(!is.na(parallel_cores)) {
+
+        sink(log_path, append=TRUE)
+
+      }
+
+      # do the processing of the result
+      stopifnot(dir.exists(output_dir))
+
+      # set the mapping with the required columns for analysis
+      gwama_map <- StudyManager::base_column_mapping
+      gwama_map <- remove_col(gwama_map, c("EFFECT_ALLELE","OTHER_ALLELE"))
+      gwama_map <- add_col(gwama_map, "EFFECT_ALLELE", "character", as.character, list("reference_allele"), active=TRUE)
+      gwama_map <- add_col(gwama_map, "OTHER_ALLELE", "character", as.character, list("other_allele"), active=TRUE)
+      gwama_map <- set_active(gwama_map, c("SNP","P"))
+
+      # set the mapping into the results DataFile and extract
+      rlog::log_debug(glue::glue("Extracting meta-analysis results data for DataFile: {result@path}"))
+      free(result)
+      mapping(result) <- gwama_map
+      result <- extract(result)
+
+      # get the data.table
+      dt <- get_data(result)
+      dt[, CHR :=  sub(":.*", "", SNP)]
+      dt[, BP :=  as.numeric(sub(".+:([0-9]+)(?::.*)?", "\\1", SNP))]
+
+
+      # PLOTTING
+      rlog::log_debug(glue::glue("Plotting - output dir: {output_dir}"))
+      output_filename <- sub(".out", "", basename(result@path))
+      output_path <- file.path(output_dir, output_filename)
+
+      # Manhattan
+      create_manhattan(dt = dt[, c("SNP","CHR","BP","P")],
+                       file_path = paste0(output_path, "_meta_manhattan.png"),
+                       #highlight = filt_snps,
+                       title = paste0("Manhattan Plot - ", output_filename))
+
+
+
+    }
+
+    if(!is.na(parallel_cores)) {
+
+      cluster(on=FALSE, cluster=cl)
+      sink()
+
+    }
+
+    # return
+    validObject(object)
+    return(object)
+  }
+)
