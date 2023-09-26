@@ -270,85 +270,127 @@ setGeneric("run_gwama", function(corpus, output_dir, ...) standardGeneric("run_g
 setMethod(
   f = "run_gwama",
   signature = c("StudyCorpus", "character"),
-  definition = function(corpus, output_dir, ...) {
+  definition = function(corpus, output_dir, ..., index=NULL, parallel_cores=NA_integer_) {
 
     stopifnot(dir.exists(output_dir))
+    stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
 
     # clean up previous runs
     old_run_files <- list.files(output_dir, pattern="_gwama.in", full.names=TRUE)
     unlink(old_run_files)
 
-    # do for each study
-    for(i in seq_along(corpus@studies)) {
+    # parallel?
+    if(!is.na(parallel_cores)) {
 
-      # extract the study to work on
-      study <- corpus[[i]]
+      log_path <- file.path(corpus@corpus_dir, '__log_run_qc_plots.txt')
+      writeLines(c(""), log_path)
+      cl <- cluster(on=TRUE)
+      `%do_or_dopar%` <- foreach::`%dopar%`
 
-      # get the keys into the data_files structure
-      if(length(c(...)) == 0) {
+    } else {
 
-        data_file_keys <- get_data_keys(study)
+      `%do_or_dopar%` <- foreach::`%do%`
 
-      } else {
+    }
 
-        data_file_keys <- get_data_keys(...)
+    # if index NULL do all of them
+    if(is.null(index)) {
+      index <- 1:length(corpus)
+    }
 
-      }
-      rlog::log_debug(glue::glue("DataFile keys to process for meta-analysis: {basename(study@dir)}, {paste0(lapply(data_file_keys, paste0, collapse=','), collapse=' | ')}"))
-      stopifnot(keys_valid(study, data_file_keys))
+    # run the corpus
+    foreach::foreach(study = studies(corpus),
+                     i     = 1:length(corpus)) %do_or_dopar% {
+
+                       print(i)
+
+                          # if parallel, turn everything on, logging file will be put in corpus main directory
+                          if(!is.na(parallel_cores)) {
+
+                            sink(log_path, append=TRUE)
+
+                          }
+
+                          if(i %in% index) {
+
+                            # extract the study to work on
+                            study <- corpus[[i]]
+
+                            # get the keys into the data_files structure
+                            if(length(c(...)) == 0) {
+
+                              data_file_keys <- get_data_keys(study)
+
+                            } else {
+
+                              data_file_keys <- get_data_keys(...)
+
+                            }
+                            rlog::log_debug(glue::glue("DataFile keys to process for meta-analysis: {basename(study@dir)}, {paste0(lapply(data_file_keys, paste0, collapse=','), collapse=' | ')}"))
+                            stopifnot(keys_valid(study, data_file_keys))
 
 
-      # for each key, process, each key will need a separate meta-analysis
-      for(keys in data_file_keys) {
+                            # for each key, process, each key will need a separate meta-analysis
+                            for(keys in data_file_keys) {
 
-        # No data, skip
-        if(length(study@qc_data_files[[ keys ]]) == 0) {
+                              # No data, skip
+                              if(length(study@qc_data_files[[ keys ]]) == 0) {
 
-          rlog::log_warn(glue::glue("No post-QC DataFile found for {basename(study@dir)}{paste0('[',keys,']',collapse='')}: Pre-QC: {length(study@data_files[[ keys ]])} files, Post-QC: {length(study@qc_data_files[[ keys ]])} files --> skipping..."))
-          next
+                                rlog::log_warn(glue::glue("No post-QC DataFile found for {basename(study@dir)}{paste0('[',keys,']',collapse='')}: Pre-QC: {length(study@data_files[[ keys ]])} files, Post-QC: {length(study@qc_data_files[[ keys ]])} files --> skipping..."))
+                                next
 
-        } else {
+                              } else {
 
-          rlog::log_info(glue::glue("Preparing meta-analaysis data for {basename(study@dir)}{paste0('[',keys,']',collapse='')}"))
+                                rlog::log_info(glue::glue("Preparing meta-analaysis data for {basename(study@dir)}{paste0('[',keys,']',collapse='')}"))
 
-        }
+                              }
 
-        # define the gwama.in file open an append connect to it
-        gwama.in <- file.path(output_dir, glue::glue("{paste0(keys,collapse='_')}_gwama.in"))
-        if(!file.exists(gwama.in)) {
+                              # define the gwama.in file open an append connect to it
+                              gwama.in <- file.path(output_dir, glue::glue("{paste0(keys,collapse='_')}_gwama.in"))
+                              if(!file.exists(gwama.in)) {
 
-          gwama.in.connection <- file(gwama.in, "w")
+                                gwama.in.connection <- file(gwama.in, "w")
 
-        } else {
+                              } else {
 
-          gwama.in.connection <- file(gwama.in, "a")
+                                gwama.in.connection <- file(gwama.in, "a")
 
-        }
+                              }
 
-        # set the mapping with the required columns for meta-analysis analysis
-        req_cols <- c("cptid","N","EFFECT_ALLELE","OTHER_ALLELE","FRQ","BETA","SE")
-        map <- StudyManager::base_column_mapping
-        map <- set_active(map, req_cols)
+                              # set the mapping with the required columns for meta-analysis analysis
+                              req_cols <- c("cptid","N","EFFECT_ALLELE","OTHER_ALLELE","FRQ","BETA","SE")
+                              map <- StudyManager::base_column_mapping
+                              map <- set_active(map, req_cols)
 
-        # the post-QC data; potentially combining multiple files depending on keys
-        rlog::log_debug(glue::glue("Extracting post-qc plot data: {basename(study@dir)} qc_data_files{paste0('[',keys,']',collapse='')}"))
-        free( study@qc_data_files[[ keys ]] )
-        mapping(study@qc_data_files[[ keys ]]) <- map
-        qc_data_file <- extract( study@qc_data_files[[ keys ]], merge_col="CHR_FCT")
+                              # the post-QC data; potentially combining multiple files depending on keys
+                              rlog::log_debug(glue::glue("Extracting post-qc plot data: {basename(study@dir)} qc_data_files{paste0('[',keys,']',collapse='')}"))
+                              free( study@qc_data_files[[ keys ]] )
+                              mapping(study@qc_data_files[[ keys ]]) <- map
+                              qc_data_file <- extract( study@qc_data_files[[ keys ]], merge_col="CHR_FCT")
 
-        # write new (maybe coombined file) out; then free the memory
-        tmp_data_path <- tempfile(glue::glue("{basename(study@dir)}_{paste0(keys,collapse='_')}_"))
-        write_file(qc_data_file, tmp_data_path)
-        free( qc_data_file )
+                              # write new (maybe coombined file) out; then free the memory
+                              tmp_data_path <- tempfile(glue::glue("{basename(study@dir)}_{paste0(keys,collapse='_')}_"))
+                              write_file(qc_data_file, tmp_data_path)
+                              free( qc_data_file )
 
-        # add the file to the gwama input
-        writeLines(tmp_data_path, gwama.in.connection)
+                              # add the file to the gwama input
+                              writeLines(tmp_data_path, gwama.in.connection)
 
-        # close connection
-        close(gwama.in.connection)
+                              # close connection
+                              close(gwama.in.connection)
 
-      } # end for each key
-    } # end for each study
+                            } # end for each key
+
+                          }
+    }
+
+    # if was parallel, turn everything off
+    if(!is.na(parallel_cores)) {
+
+      cluster(on=FALSE, cluster=cl)
+      sink()
+
+    }
 
     # GWAMA runs
     gwama.in_file_list = list.files(output_dir, pattern="_gwama.in", full.names=TRUE)
@@ -369,7 +411,8 @@ setMethod(
 
 
       # the GWAMA command
-      gwama_cmd <- paste("/Users/xx20081/Downloads/GWAMA_v2/GWAMA",  # need to change this
+      gwama_exe <- system.file("bin", "GWAMA_v2", "GWAMA", package="StudyManager")
+      gwama_cmd <- paste(gwama_exe,  # need to change this
                          "--filelist", gwama.in_file,
                          "--output", gwama.out_file,
                          ifelse(corpus@meta_quantitative, "--quantitative", ""),
