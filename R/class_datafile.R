@@ -149,7 +149,7 @@ setGeneric("mapping", function(x) standardGeneric("mapping"))
 #' @rdname mapping
 setMethod("mapping", "DataFile", function(x) x@mapping)
 #' @rdname mapping
-setMethod("mapping", "list", function(x) lapply(x, mapping))
+setMethod("mapping", "list", function(x) lapply(x, mapping) )
 
 
 #' mapping
@@ -166,7 +166,7 @@ setMethod("mapping<-", "list", function(x, value) {
 
     stopifnot("mapping value must be length==1 or length==length(x)" = length(value)==1 | length(value)==length(x))
 
-    if(length(value) == 1) {
+    if(length(value) == 1 & !is.list(value)) {
 
       value <- rep(list(value), length.out=length(x))
 

@@ -442,7 +442,6 @@ setMethod(
 
       # the pre-QC data, chromosomes merged
       rlog::log_debug(glue::glue("Extracting pre-qc plot data data_files{paste0('[',keys,']',collapse='')}"))
-
       free( object@data_files[[ keys ]] )
       mapping(object@data_files[[ keys ]]) <- maps
       data_file <- extract( object@data_files[[ keys ]], merge_col="CHR_FCT")
