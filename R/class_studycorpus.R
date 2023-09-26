@@ -407,9 +407,6 @@ setMethod(
       dir.create(output_sub_dir, showWarnings=FALSE)
       gwama.out_file <- file.path(output_sub_dir,key_str)
 
-      # GWAMA executable
-
-
       # the GWAMA command
       gwama_exe <- system.file("bin", "GWAMA_v2", "GWAMA", package="StudyManager")
       gwama_cmd <- paste(gwama_exe,  # need to change this
