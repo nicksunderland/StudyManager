@@ -838,7 +838,7 @@ setMethod(
 
       # Add highlight and annotation information
       dplyr::mutate( is_highlight=ifelse(SNP %in% highlight, "yes", "no")) |>
-      dplyr::mutate( is_annotate=ifelse(-log10(P)>4, "yes", "no"))
+      dplyr::mutate( is_annotate=ifelse(-log10(P)>-log10(5e-8), "yes", "no"))
 
     # Prepare X axis
     axisdf <- d |>
@@ -880,7 +880,7 @@ setMethod(
         panel.grid.minor.x = element_blank(),
         strip.text.x = element_blank()
       ) +
-      ggplot2::facet_grid(cols=vars(CHR), scales="free_x", space="free_x")
+      ggplot2::facet_grid(cols=vars(CHR), scales="free_x", space="fixed")
 
     # save plot
     grDevices::png(filename=file_path, bg="white", height=500, width=1200, units="px")
