@@ -24,7 +24,12 @@ corpus <- StudyCorpus(corpus_dir ="/Users/xx20081/Downloads/hermes_progression",
 )
 
 
+
+
 corpus <- run_qc(corpus, index=2) # "allcause_death", "xchr_male",
+
+
+
 
 corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_death"), index=1)#"composite_1", "composite_2"
 
@@ -32,6 +37,8 @@ corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_d
 
 load_all()
 corpus <- run_gwama(corpus, "/Users/xx20081/Downloads/meta_analysis_output") #, parallel_cores=4)
+
+corpus <- create_results_list
 
 corpus <- run_meta_plots(corpus, "/Users/xx20081/Downloads/figures")
 
