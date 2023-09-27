@@ -7,7 +7,7 @@
 \usage{
 run_gwama(corpus, output_dir, ...)
 
-\S4method{run_gwama}{StudyCorpus,character}(corpus, output_dir, ...)
+\S4method{run_gwama}{StudyCorpus,character}(corpus, output_dir, ..., index = NULL, parallel_cores = NA_integer_)
 }
 \arguments{
 \item{corpus}{.}

@@ -38,7 +38,7 @@ corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_d
 load_all()
 corpus <- run_gwama(corpus, "/Users/xx20081/Downloads/meta_analysis_output") #, parallel_cores=4)
 
-corpus <- create_results_list
+corpus <- create_results_list(corpus, "GWASsumstats", "/Users/xx20081/Downloads/meta_analysis_output")
 
 corpus <- run_meta_plots(corpus, "/Users/xx20081/Downloads/figures")
 
