@@ -302,7 +302,7 @@ setMethod(
     foreach::foreach(study = studies(corpus),
                      i     = 1:length(corpus)) %do_or_dopar% {
 
-                       print(i)
+                       #print(i)
 
                           # if parallel, turn everything on, logging file will be put in corpus main directory
                           if(!is.na(parallel_cores)) {
@@ -328,7 +328,6 @@ setMethod(
                             }
                             rlog::log_debug(glue::glue("DataFile keys to process for meta-analysis: {basename(study@dir)}, {paste0(lapply(data_file_keys, paste0, collapse=','), collapse=' | ')}"))
                             stopifnot(keys_valid(study, data_file_keys))
-
 
                             # for each key, process, each key will need a separate meta-analysis
                             for(keys in data_file_keys) {
@@ -358,19 +357,20 @@ setMethod(
                               }
 
                               # set the mapping with the required columns for meta-analysis analysis
-                              req_cols <- c("cptid","N","EFFECT_ALLELE","OTHER_ALLELE","FRQ","BETA","SE")
+                              req_cols <- c("cptid","EFFECT_ALLELE","OTHER_ALLELE","BETA","SE","N","FRQ","STRAND")
                               map <- StudyManager::base_column_mapping
-                              map <- set_active(map, req_cols)
+                              map <- set_active(map, req_cols, rest.off=TRUE)
 
                               # the post-QC data; potentially combining multiple files depending on keys
                               rlog::log_debug(glue::glue("Extracting post-qc plot data: {basename(study@dir)} qc_data_files{paste0('[',keys,']',collapse='')}"))
                               free( study@qc_data_files[[ keys ]] )
                               mapping(study@qc_data_files[[ keys ]]) <- map
-                              qc_data_file <- extract( study@qc_data_files[[ keys ]], merge_col="CHR_FCT")
+                              qc_data_file <- extract( study@qc_data_files[[ keys ]])
+
 
                               # write new (maybe coombined file) out; then free the memory
                               tmp_data_path <- tempfile(glue::glue("{basename(study@dir)}_{paste0(keys,collapse='_')}_"))
-                              write_file(qc_data_file, tmp_data_path)
+                              write_file(qc_data_file, tmp_data_path, na=".", quote=FALSE) # GWAMA doesn't like empty fields, so set empty to "."?; also doesnt like quoted string headers
                               free( qc_data_file )
 
                               # add the file to the gwama input
@@ -381,8 +381,8 @@ setMethod(
 
                             } # end for each key
 
-                          }
-    }
+                           } # end if in index
+    } # end for each study
 
     # if was parallel, turn everything off
     if(!is.na(parallel_cores)) {
@@ -415,13 +415,17 @@ setMethod(
                          ifelse(corpus@meta_quantitative, "--quantitative", ""),
                          ifelse(corpus@meta_indel_alleles, "--indel_alleles", ""),
                          "--name_marker cptid",
-                         "--name_n N",
                          "--name_ea EFFECT_ALLELE",
                          "--name_nea OTHER_ALLELE",
-                         "--name_eaf FRQ",
                          "--name_beta BETA",
-                         "--name_se SE"
+                         "--name_se SE",
+                         "--name_eaf FRQ",
+                         "--name_n N",
+                         "--name_strand STRAND"
       )
+
+      # print(gwama_cmd)
+      # stop()
 
       # run the meta-analysis
       system(gwama_cmd)
@@ -436,6 +440,15 @@ setMethod(
       # create the results file
       corpus@results[[key_str]] <- DataFile(path = paste0(gwama.out_file, ".out"),
                                             mapping = gwama_map)
+
+
+
+
+      # testing
+      corpus@results[[key_str]] <- extract(corpus@results[[key_str]])
+      print(key_str)
+      print(head(get_data(corpus@results[[key_str]]), 3))
+
 
     }
 

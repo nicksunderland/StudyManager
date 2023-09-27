@@ -1,6 +1,6 @@
 load_all()
 
-corpus <- StudyCorpus(corpus_dir = "/Users/xx20081/Documents/local_data/hermes_progression", #  "/Users/xx20081/Downloads/hermes_progression",
+corpus <- StudyCorpus(corpus_dir ="/Users/xx20081/Downloads/hermes_progression", #/Users/xx20081/Documents/local_data/hermes_progression", #
                       study_type = "GWASsumstats",
                       ref_path = "/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz",
                       mapping = StudyManager::base_column_mapping,
@@ -31,7 +31,7 @@ corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_d
 
 
 load_all()
-corpus <- run_gwama(corpus, "/Users/xx20081/Downloads/meta_analysis_output", parallel_cores=12)
+corpus <- run_gwama(corpus, "/Users/xx20081/Downloads/meta_analysis_output") #, parallel_cores=4)
 
 corpus <- run_meta_plots(corpus, "/Users/xx20081/Downloads/figures")
 
