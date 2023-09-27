@@ -253,7 +253,46 @@ setMethod(
   }
 )
 
+#' create_results_list
+#'
+#' @param object .
+#' @param study_type .
+#' @param results_dir description
+#'
+#' @return .
+#' @export
+#'
+setGeneric("create_results_list", function(corpus, study_type, results_dir) standardGeneric("create_results_list"))
+#' @rdname create_results_list
+setMethod(
+  f = "create_results_list",
+  signature = c("StudyCorpus", "character", "character"),
+  definition = function(corpus, study_type, results_dir) {
 
+    corpus@results <- list()
+
+    results_directories <- list.dirs(results_dir, recursive=FALSE)
+
+    for(dir in results_directories) {
+
+      if(study_type == "GWASsumstats") {
+
+        result_file <- list.files(dir, "\\.out", full.names = TRUE)
+        result_file <- result_file[!grepl("(\\.err\\.out|\\.gc\\.out|\\.log\\.out)$", result_file)]
+
+        if(length(result_file)==1) {
+          key <- basename(sub("\\.out$", "", result_file))
+          corpus@results[[key]] <- DataFile(path = result_file)
+        } else {
+          next
+        }
+      }
+    }
+
+    validObject(corpus)
+    return(corpus)
+  }
+)
 
 
 #' run_gwama
