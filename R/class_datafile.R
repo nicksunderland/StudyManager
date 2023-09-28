@@ -7,7 +7,6 @@
 #' @return a DataFile object
 #' @export
 #' @importFrom methods new validObject
-#' @importFrom rlang :=
 #' @importFrom checkmate test_path_for_output
 #' @importFrom data.table data.table fread fwrite set is.data.table
 #' @include data.R

@@ -24,12 +24,18 @@ corpus <- StudyCorpus(corpus_dir ="/Users/xx20081/Downloads/hermes_progression",
 )
 
 
+summary_dt <- run_filter_summary_plots(corpus, "/Users/xx20081/Downloads/figures", parallel_cores=12)
+
+
+# jobs, rerun all of the QC as changed filters
+# create the summary figures
+# create the zoomed fi
+
+
+
 
 
 corpus <- run_qc(corpus, index=2) # "allcause_death", "xchr_male",
-
-
-
 
 corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_death"), index=1)#"composite_1", "composite_2"
 

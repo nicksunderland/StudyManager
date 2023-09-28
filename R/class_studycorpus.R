@@ -615,7 +615,11 @@ setMethod(
 
       }
 
+      # generate the plots as side effects
       run_qc_plots(study, output_dir, ...)
+
+      # return the QC summary data
+      qc_summary_data <- run_qc_summary(study, ...)
 
     }
 
@@ -725,6 +729,135 @@ setMethod(
       sink()
 
     }
+
+    # return
+    validObject(object)
+    return(object)
+  }
+)
+
+
+#' run_filter_summary_plots
+#'
+#' @param object .
+#' @param output_dir .
+
+#'
+#' @return True
+#' @importFrom tidyr pivot_longer
+#' @importFrom dplyr summarise across starts_with rename_with rename group_by
+#' @export
+#'
+setGeneric("run_filter_summary_plots", function(object, output_dir, parallel_cores=NA_integer_) standardGeneric("run_filter_summary_plots"))
+#' @rdname run_filter_summary_plots
+setMethod(
+  f = "run_filter_summary_plots",
+  signature = c("StudyCorpus", "character"),
+  definition = function(object, output_dir, parallel_cores=NA_integer_) {
+
+    rlog::log_info("Running run_filter_summary_plots(`StudyCorpus`)...")
+
+    stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
+
+    if(!is.na(parallel_cores)) {
+
+      log_path <- file.path(object@corpus_dir, '__log_run_filter_summary_plots.txt')
+      writeLines(c(""), log_path)
+      cl <- cluster(on=TRUE)
+      `%do_or_dopar%` <- foreach::`%dopar%`
+
+    } else {
+
+      `%do_or_dopar%` <- foreach::`%do%`
+
+    }
+
+    # loop over studies
+    summary_dt <- foreach::foreach(study = studies(object), .combine="rbind") %do_or_dopar% {
+      if(!is.na(parallel_cores)) {
+
+        sink(log_path, append=TRUE)
+
+      }
+      dt <- qc_filter_summary(study)
+    }
+
+
+    if(!is.na(parallel_cores)) {
+
+      cluster(on=FALSE, cluster=cl)
+      sink()
+
+    }
+
+    # PLOTTING
+    rlog::log_debug(glue::glue("Plotting - output dir: {output_dir}"))
+
+    # heatmap - filter overview per study
+    summary_dt |>
+      dplyr::group_by(study) |>
+      dplyr::summarise(n = sum(n, na.rm=T),
+                       dplyr::across(dplyr::starts_with("FILTER_"), ~ sum(.x))) |>
+      dplyr::mutate(dplyr::across(dplyr::starts_with("FILTER_"), ~ .x / n)) |>
+      dplyr::select(-n) |>
+      dplyr::rename_with(~ sub("_n$","",.), dplyr::starts_with("FILTER_")) |>
+      tidyr::pivot_longer(starts_with("FILTER_"), names_to="FILTER", values_to="FAIL_RATE") |>
+      data.table::as.data.table() |>
+      create_heatmap(x="study", y="FILTER", z="FAIL_RATE",
+                     x_lab="Study", y_lab="Filter", fill_lab="Fail rate %",
+                     file_path=file.path(output_dir, "filter_summary_studies.png"),
+                     title = "Filter summary - overview")
+
+    # heatmap - filter by outcome per study
+    summary_dt |>
+      dplyr::rename(outcome=key_1) |>
+      dplyr::group_by(study, outcome) |>
+      dplyr::summarise(n = sum(n, na.rm=T),
+                       dplyr::across(dplyr::starts_with("FILTER_"), ~ sum(.x))) |>
+      dplyr::mutate(dplyr::across(dplyr::starts_with("FILTER_"), ~ .x / n)) |>
+      dplyr::select(-n) |>
+      dplyr::rename_with(~ sub("_n$","",.), dplyr::starts_with("FILTER_")) |>
+      tidyr::pivot_longer(starts_with("FILTER_"), names_to="FILTER", values_to="FAIL_RATE") |>
+      data.table::as.data.table() |>
+      create_heatmap(x="study", y="FILTER", z="FAIL_RATE", fy="outcome",
+                     x_lab="Study", y_lab="Filter", fill_lab="Fail rate %",
+                     file_path=file.path(output_dir, "filter_summary_studies_outcome.png"),
+                     title = "Filter summary - outcome")
+
+    # heatmap - filter by chromosome type per study
+    summary_dt |>
+      dplyr::rename(chrom_type=key_2) |>
+      dplyr::group_by(study, chrom_type) |>
+      dplyr::summarise(n = sum(n, na.rm=T),
+                       dplyr::across(dplyr::starts_with("FILTER_"), ~ sum(.x))) |>
+      dplyr::mutate(dplyr::across(dplyr::starts_with("FILTER_"), ~ .x / n)) |>
+      dplyr::select(-n) |>
+      dplyr::rename_with(~ sub("_n$","",.), dplyr::starts_with("FILTER_")) |>
+      tidyr::pivot_longer(starts_with("FILTER_"), names_to="FILTER", values_to="FAIL_RATE") |>
+      data.table::as.data.table() |>
+      create_heatmap(x="study", y="FILTER", z="FAIL_RATE", fy="chrom_type",
+                     x_lab="Study", y_lab="Filter", fill_lab="Fail rate %",
+                     file_path=file.path(output_dir, "filter_summary_studies_chrom_type.png"),
+                     title = "Filter summary - autosomes vs. X-chr")
+
+    # heatmap - filter by chromosome number per study
+    summary_dt |>
+      dplyr::mutate(CHR = as.character(as.integer(CHR))) |>
+      dplyr::mutate(CHR = dplyr::coalesce(CHR, key_2)) |>
+      dplyr::mutate(CHR = factor(CHR, levels=c(as.character(1:25), unique(summary_dt$key_2)))) |>
+      dplyr::group_by(study, CHR) |>
+      dplyr::summarise(n = sum(n, na.rm=T),
+                       dplyr::across(dplyr::starts_with("FILTER_"), ~ sum(.x))) |>
+      dplyr::mutate(dplyr::across(dplyr::starts_with("FILTER_"), ~ .x / n)) |>
+      dplyr::select(-n) |>
+      dplyr::rename_with(~ sub("_n$","",.), dplyr::starts_with("FILTER_")) |>
+      tidyr::pivot_longer(starts_with("FILTER_"), names_to="FILTER", values_to="FAIL_RATE") |>
+      data.table::as.data.table() |>
+      create_heatmap(x="CHR", y="FILTER", z="FAIL_RATE", fy="study",
+                     x_lab="Chromosome", y_lab="Filter", fill_lab="Fail rate %",
+                     file_path=file.path(output_dir, "filter_summary_studies_chromosome.png"),
+                     h = 4800,
+                     title = "Filter summary - chromosome")
 
     # return
     validObject(object)

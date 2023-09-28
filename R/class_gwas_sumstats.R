@@ -75,6 +75,109 @@ setMethod(
 )
 
 
+
+
+
+
+#' qc_filter_summary
+#'
+#' @param object .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
+setGeneric("qc_filter_summary", function(object, ...) standardGeneric("qc_filter_summary"))
+#' @rdname qc_filter_summary
+setMethod(
+  f = "qc_filter_summary",
+  signature = "GWASsumstats",
+  definition = function(object, ...) {
+
+    # first check if the keys are valid
+    if(length(c(...)) == 0) {
+
+      data_file_keys <- get_data_keys(object)
+
+    } else {
+
+      data_file_keys <- get_data_keys(...)
+
+    }
+    rlog::log_debug(glue::glue("DataFile keys to run QC summary for: '{paste0(paste0('[',data_file_keys,']'), collapse=' | ')}'"))
+    stopifnot(keys_valid(object, data_file_keys))
+
+    # read in the reference
+    mapping(object@ref_data_file) <- set_active(mapping(object@ref_data_file), c("cptid","EUR_FRQ","MARKER_TYPE"))
+    ref_dt <- get_data(extract(object@ref_data_file))
+
+    # dt to collate results into
+    dt <- data.table::data.table()
+
+    # process each data_file(s) indicated by the keys
+    for(key in data_file_keys) {
+
+      rlog::log_debug(glue::glue("Summarising filters for: '{paste0(paste0('[',key,']'), collapse=' | ')}'"))
+
+      # ensure required columns activated
+      map <- mapping(object@data_files[[ key ]]) # from each DataFile map as could be different
+      qc_cols <- c("CHR","BP","EFFECT_ALLELE","OTHER_ALLELE","INFO","N","N_CAS","FRQ")
+      map <- set_active(map, qc_cols)  # see mapping slot of 'Study'
+      mapping(object@data_files[[ key ]]) <- map
+
+      # the DataFile data and work out filter summaries
+      allowed_alleles <- c("A","T","G","C")
+      dat <- get_data(extract(object@data_files[[ key ]])) |>
+        # generate the cptid
+        dplyr::mutate("cptid" = ifelse(EFFECT_ALLELE%in%allowed_alleles & OTHER_ALLELE%in%allowed_alleles, paste0(CHR,":",BP), paste0(CHR,":",BP,":ID")),
+                      "CALL_RATE" = N / max(N, na.rm=T),
+                      "AMBIGUOUS" = ((EFFECT_ALLELE == 'A') & (OTHER_ALLELE == 'T')) | ((EFFECT_ALLELE == 'T') & (OTHER_ALLELE == 'A')) | ((EFFECT_ALLELE == 'C') & (OTHER_ALLELE == 'G')) | ((EFFECT_ALLELE == 'G') & (OTHER_ALLELE == 'C'))) |>
+        # join with the reference data
+        dplyr::left_join(ref_dt, by="cptid") |>
+        # analyse per chromosome
+        dplyr::group_by(CHR) |>
+        # summarise
+        dplyr::summarise(n = dplyr::n(),
+                         FILTER_NOT_IN_REF_n   = sum(is.na(EUR_FRQ)),
+                         FILTER_BAD_QUAL_n     = sum(INFO < object@qc_qual_threshold, na.rm=T),
+                         FILTER_LOW_N_LOW_FRQ_n= sum(  ((FRQ < object@qc_freq_threshold | FRQ > 1-object@qc_freq_threshold) & (N_CAS > object@qc_low_events_n | is.na(N_CAS))) |
+                                                       ((FRQ < object@qc_freq_low_events_thresh | FRQ > 1-object@qc_freq_low_events_thresh) & (N_CAS <= object@qc_low_events_n)), na.rm=T),
+                         FILTER_LOW_CALL_RATE_n= sum(CALL_RATE < object@qc_call_rate_threshold, na.rm=T),
+                         FILTER_AMBIG_MID_FRQ_n = sum( (AMBIGUOUS & (FRQ > object@qc_freq_ambig_thresh & FRQ < 1-object@qc_freq_ambig_thresh)), na.rm=T),
+                         FILTER_OUTLIER_FRQ_n = sum( abs(FRQ-EUR_FRQ) > object@qc_freq_diff_threshold, na.rm = T))
+
+      # add loop data
+      new_key_cols <- paste0("key_", as.character(1:length(key)))
+      for(i in seq_along(key)) {
+        dat[[ new_key_cols[[i]] ]] <- key[[i]]
+      }
+      dat[["study"]] <- basename(object@dir)
+
+      # concat
+      dt <- rbind(dt, dat)
+
+      # free file memory
+      free(object@data_files[[ key ]])
+    }
+
+    # free ref file memory
+    free(object@ref_data_file)
+
+    # return
+    return(dt)
+  }
+)
+
+
+
+
+
+
+
+
+
+
+
 #' run_qc
 #'
 #' @param object .
@@ -246,8 +349,8 @@ setMethod(
           --rcdFilter INFO >= { object@qc_qual_threshold }
           --strFilterName good_qual_score
 
-      # FILTER
-          --rcdFilter ((FRQ >= { object@qc_freq_threshold }) & (FRQ <= { 1-object@qc_freq_threshold }) & (N_CAS > { object@qc_low_events_n } | is.na(N_CAS))) | ((FRQ >= { object@qc_freq_low_events_thresh }) & (FRQ <= { 1-object@qc_freq_low_events_thresh }) & (N_CAS <= { object@qc_low_events_n } | is.na(N_CAS)))
+      FILTER
+          --rcdFilter ((FRQ >= { object@qc_freq_threshold }) & (FRQ <= { 1-object@qc_freq_threshold }) & (N_CAS > { object@qc_low_events_n } | is.na(N_CAS))) | ((FRQ >= { object@qc_freq_low_events_thresh }) & (FRQ <= { 1-object@qc_freq_low_events_thresh }) & (N_CAS <= { object@qc_low_events_n }))
           --strFilterName good_freq
 
       ADDCOL
@@ -892,3 +995,57 @@ setMethod(
   }
 )
 
+
+#' create_heatmap
+#'
+#' @param dt .
+#' @param file_path .
+#' @param ... .
+#'
+#' @return .
+#' @importFrom viridis scale_fill_viridis
+#' @export
+#'
+  setGeneric("create_heatmap", function(dt, x, y, z, fx=NULL, fy=NULL, x_lab="x", y_lab="y", fill_lab="fill", h=1200, w=1200, file_path=getwd(), ...) standardGeneric("create_heatmap"))
+  #' @rdname create_qq
+  setMethod(
+    f = "create_heatmap",
+    signature = c("data.table"),
+    definition = function(dt, x, y, z, fx=NULL, fy=NULL, x_lab="x", y_lab="y", fill_lab="fill", h=1200, w=1200, file_path=getwd(), ...) {
+
+      # ensure there is some data
+      stopifnot(ncol(dt) > 0)
+      stopifnot(nrow(dt) > 0)
+
+      # create dir if needed
+      dir.create(dirname(file_path), recursive=TRUE, showWarnings=FALSE)
+
+      # logging info
+      rlog::log_info("Heatmap plot...")
+      rlog::log_info(glue::glue("Writing image to: {file_path}"))
+
+      # generate PP-plot but with ggplot instead of qqman
+      plot <- ggplot2::ggplot(dt, ggplot2::aes(x=get(x), y=get(y), fill=get(z))) +
+        ggplot2::geom_tile() +
+        ggplot2::coord_fixed() +
+        viridis::scale_fill_viridis(option="magma", discrete=FALSE) +
+        ggplot2::labs(...,
+                      x = x_lab,
+                      y = y_lab,
+                      fill = fill_lab) +
+        ggplot2::theme(
+          axis.text.x = element_text(angle=50, hjust=1, vjust=1)
+        )
+      if(any(!is.null(c(fx, fy)))) {
+        plot <- plot + ggplot2::facet_grid(cols=fx, rows=fy)
+      }
+
+      # save plot
+      grDevices::png(filename=file_path, bg="white", height=h, width=w, units="px")
+      print(plot)
+      grDevices::dev.off()
+
+      # return
+      invisible(plot)
+    }
+  )
