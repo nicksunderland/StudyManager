@@ -61,7 +61,7 @@ setMethod(
     .Object <- callNextMethod(.Object, ...)
 
     # .Object picked up a mapping from 'Study' initilialiser, so use to set ref map
-    ref_cols <- c("cptid","SNP","CHR","BP","MARKER_TYPE","A0","OTHER_ALLELE","EUR_FRQ")
+    ref_cols <- c("cptid","CHR","BP","MARKER_TYPE","A0","OTHER_ALLELE","EUR_FRQ","ORI_OTHER_ALLELE", "ORI_A0")
     mapping(.Object@ref_data_file) <- set_active(.Object@mapping, ref_cols)
 
     # required gwas cols, now set the mapping to these
@@ -295,8 +295,8 @@ setMethod(
 
     # ensure required columns activated
     map <- mapping(object@data_files[[ keys ]]) # from each DataFile map as could be different
-    gwas_cols <- c("SNP","CHR","BP","STRAND","N_CAS","N","INFO","FRQ","EFFECT_ALLELE","OTHER_ALLELE","BETA","SE","P")
-    map <- set_active(map, gwas_cols)  # see mapping slot of 'Study'
+    gwas_cols <- c("CHR","BP","STRAND","N_CAS","N","INFO","FRQ","EFFECT_ALLELE","OTHER_ALLELE","BETA","SE","P", "IMPUTED")
+    map <- set_active(map, gwas_cols, rest.off=TRUE)  # see mapping slot of 'Study'
     mapping(object@data_files[[ keys ]]) <- map
 
     # types and names
@@ -363,6 +363,16 @@ setMethod(
           --strFilterName good_call_rate
 
       ADDCOL
+          --rcdAddCol EFFECT_ALLELE
+          --colOut ORI_EFFECT_ALLELE
+          --blnOverwrite 1
+
+      ADDCOL
+          --rcdAddCol OTHER_ALLELE
+          --colOut ORI_OTHER_ALLELE
+          --blnOverwrite 1
+
+      ADDCOL
           --rcdAddCol ((EFFECT_ALLELE == 'A') & (OTHER_ALLELE == 'T')) | ((EFFECT_ALLELE == 'T') & (OTHER_ALLELE == 'A')) | ((EFFECT_ALLELE == 'C') & (OTHER_ALLELE == 'G')) | ((EFFECT_ALLELE == 'G') & (OTHER_ALLELE == 'C'))
           --colOut AMBIGUOUS
           --blnOverwrite 1
@@ -376,7 +386,6 @@ setMethod(
           --colInA2 OTHER_ALLELE
 
       CREATECPTID
-          --colInMarker SNP
           --colInA1 EFFECT_ALLELE
           --colInA2 OTHER_ALLELE
           --colInChr CHR
@@ -399,6 +408,11 @@ setMethod(
           --blnRefAll 0
           --blnWriteNotInRef 1
 
+      ADDCOL
+          --rcdAddCol EFFECT_ALLELE
+          --colOut EFFECT_ALLELE_BEFORE
+          --blnOverwrite 1
+
       ADJUSTALLELES
           --colRefA1 OTHER_ALLELE_REF
           --colRefA2 A0_REF
@@ -416,6 +430,25 @@ setMethod(
       FILTER
           --rcdFilter abs(FRQ-EUR_FRQ_REF) <= { object@qc_freq_diff_threshold }
           --strFilterName eaf_difference_within_tol
+
+      ADDCOL
+          --rcdAddCol EFFECT_ALLELE!=EFFECT_ALLELE_BEFORE
+          --colOut ALLELE_FLIPPED
+          --blnOverwrite 1
+
+      EDITCOL
+          --rcdEditCol ifelse(ALLELE_FLIPPED, ORI_EFFECT_ALLELE, ORI_OTHER_ALLELE)
+          --colEdit ORI_OTHER_ALLELE
+
+      EDITCOL
+          --rcdEditCol ifelse(ALLELE_FLIPPED, ORI_OTHER_ALLELE, ORI_EFFECT_ALLELE)
+          --colEdit ORI_EFFECT_ALLELE
+
+      REMOVECOL
+          --colRemove EFFECT_ALLELE_BEFORE
+
+      REMOVECOL
+          --colRemove ALLELE_FLIPPED
 
       WRITE
           --strMode gz
@@ -438,7 +471,7 @@ setMethod(
     # clean up
     unlink(input_path)
 
-    # get the QC data n.b. no file is written if empty data.table so check for existance
+    # get the QC data n.b. no file is written if empty data.table so check for existence
     if(!easy_qc_success) {
 
       rlog::log_error("EasyQC failed")
@@ -448,7 +481,11 @@ setMethod(
       # save DataFile
       new_post_qc_map <- data.table::copy(object@mapping)
       new_post_qc_map <- set_active(new_post_qc_map, unique(c(col_names(new_post_qc_map),
-                                                              "CALL_RATE","AMBIGUOUS","STRAND","cptid")))
+                                                              "CALL_RATE","AMBIGUOUS","STRAND","cptid",
+                                                              "ORI_EFFECT_ALLELE", "ORI_OTHER_ALLELE",
+                                                              "OTHER_ALLELE_REF", "A0",
+                                                              "ORI_OTHER_ALLELE_REF", "ORI_A0",
+                                                              "EUR_FRQ"    )))
 
       easyqc_output_file <- paste0(output_path, ".gz")
 
@@ -521,10 +558,10 @@ setMethod(
     object@ref_data_file <- free( object@ref_data_file )
     mapping(object@ref_data_file) <- ref_map
 
-    # extract the required ref data
+    # # extract the required ref data
     object@ref_data_file <- extract( object@ref_data_file )
 
-    # set key for faster processing
+    # # set key for faster processing
     data.table::setkey(get_data(object@ref_data_file), "cptid")
 
     # for each data source
@@ -539,7 +576,7 @@ setMethod(
       }
 
       # set the mapping with the required columns for analysis
-      req_cols <- c("cptid","SNP","EFFECT_ALLELE","OTHER_ALLELE","CHR","BP","P","BETA","INFO","FRQ")
+      req_cols <- c("cptid","SNP","EFFECT_ALLELE","OTHER_ALLELE","CHR","BP","P","BETA","INFO","FRQ", "EUR_FRQ")
       maps <- mapping(object@data_files[[ keys ]])
       maps <- set_active(maps, req_cols)
 
@@ -564,20 +601,24 @@ setMethod(
       qc_data_file <- extract( object@qc_data_files[[ keys ]], merge_col="CHR_FCT" )
 
       # which SNPs were filtered out
-      filt_snps <- get_data(data_file)[!get_data(qc_data_file), on="SNP"][["SNP"]]
+      filt_snps <- get_data(data_file)[!get_data(qc_data_file), on="cptid"][["cptid"]]
+
+      # Join the reference data and take the European frequency column
+      pre_qc_dt <- get_data(data_file)   [, EUR_FRQ := NULL]
+      data.table::setkey(pre_qc_dt, "cptid")
+      pre_qc_dt[get_data(object@ref_data_file), EUR_FRQ := EUR_FRQ, on = .(cptid)]
 
       # bind the pre and post QC data
       rlog::log_info("Creating plotting data...")
       dt <- rbind(
-          get_data(data_file)   [, "QC_STATUS" := "PRE-QC" ],
+          pre_qc_dt[, "QC_STATUS" := "PRE-QC" ],
           get_data(qc_data_file)[, "QC_STATUS" := "POST-QC"]
       )[, QC_STATUS := factor(QC_STATUS, levels=c("PRE-QC", "POST-QC"))]
-      data.table::setkey(dt, "cptid")
-
-      # Join the reference data and take the European frequency column
-      dt[get_data(object@ref_data_file), EUR_FRQ := EUR_FRQ]
 
       diff_levels <- c("No reference data", "EAF outlier", "EAF within tolerance")
+      #TODO: work out why numeric isnt being enforced
+      dt[, EUR_FRQ := as.numeric(EUR_FRQ)]
+      #TODO: ----------------------------------------
       dt[, FRQ_DIFF_FCT := data.table::fcase(is.na(EUR_FRQ), factor("No reference data", levels=diff_levels),
                                              abs(FRQ-EUR_FRQ) > object@qc_freq_diff_threshold, factor("EAF outlier", levels=diff_levels),
                                              abs(FRQ-EUR_FRQ) <=object@qc_freq_diff_threshold, factor("EAF within tolerance", levels=diff_levels),
@@ -590,6 +631,7 @@ setMethod(
       output_path <- file.path(output_dir, output_filename)
 
       # Manhattan
+      dt[, SNP := cptid]
       create_manhattan(dt = dt[, c("SNP","CHR","BP","P")],
                        file_path = paste0(output_path, "_qc_manhattan.png"),
                        highlight = filt_snps,
@@ -968,7 +1010,7 @@ setMethod(
       ggplot2::geom_point(data=subset(d, is_highlight=="yes"), shape=4, alpha=0.5,  color="grey2", size=2) +
       #
       # # Add label using ggrepel to avoid overlapping
-      ggrepel::geom_label_repel( data=subset(d, is_annotate=="yes"), ggplot2::aes(label=SNP), colour="black", size=3) +
+      ggrepel::geom_label_repel( data=subset(d, is_annotate=="yes"), ggplot2::aes(label=SNP), colour="black", size=2) +
 
       # Custom the theme:
       ggplot2::theme_minimal() +
@@ -1007,7 +1049,7 @@ setMethod(
 #' @export
 #'
   setGeneric("create_heatmap", function(dt, x, y, z, fx=NULL, fy=NULL, x_lab="x", y_lab="y", fill_lab="fill", h=1200, w=1200, file_path=getwd(), ...) standardGeneric("create_heatmap"))
-  #' @rdname create_qq
+  #' @rdname create_heatmap
   setMethod(
     f = "create_heatmap",
     signature = c("data.table"),
@@ -1049,3 +1091,81 @@ setMethod(
       invisible(plot)
     }
   )
+
+
+
+
+
+
+
+#' create_locuszoom
+#'
+#' @param dt .
+#' @param file_path .
+#' @param ... .
+#'
+#' @return .
+#' @importFrom LDlinkR LDproxy
+#' @importFrom topr locuszoom
+#' @export
+#'
+setGeneric("create_locuszoom", function(dt, snp, file_path=getwd(), ...) standardGeneric("create_locuszoom"))
+#' @rdname create_locuszoom
+setMethod(
+  f = "create_locuszoom",
+  signature = c("data.table", "character"),
+  definition = function(dt, snp, file_path=getwd(), ...) {
+
+    dt <- data.table::fread("/Users/xx20081/Downloads/meta_analysis_output/allcause_death_autosomes/allcause_death_autosomes.out")
+
+    snp = dt[[which.min(dt$`p-value`), "rs_number"]]
+    snp = "7:19082644"
+
+    # if of format "7:23444871" / chr:pos - change to "chr7:23444871"
+    if(grepl("^([0-9]{1,2}|X|Y):", snp)) snp <- paste0("chr", sub("([0-9]+:[0-9]+)(?:[:].*)","\\1", snp))
+
+    # get the LD with the surrounding SNPs; within +/- 500kb and R2>0.01 (fixed values with the LDlinkR::LDproxy function)
+    proxies <- LDlinkR::LDproxy(snp, genome_build="grch37", pop="EUR", r2d="r2", token="c9c23f7559df") |>
+      dplyr::mutate(Coord = sub("chr","",Coord)) |>
+      dplyr::select("Coord","SNP"="RS_Number", "R2")
+
+    # TODO: investigate the LDexpress() function - Search if a list of variants (or variants in LD with those variants) is associated with
+    # gene expression in tissues of interest. Quantitative trait loci data is downloaded from the GTEx Portal (GTEx v8).
+    # https://ldlink.nih.gov/?tab=help#LDproxy
+
+    # join on the R2 - only interested in linkage with the markers that we kept in our initial reference
+    dt <- dt |>
+      dplyr::mutate(CHROM = sub(":.*","",rs_number),
+                    POS = sub(".*:","",rs_number)) |>
+      dplyr::select("CHROM","POS","P"=`p-value`, "rs_number") |>
+      dplyr::left_join(proxies, by=c("rs_number"="Coord")) |>
+      dplyr::filter(CHROM==7)
+
+    # plot locus zoom
+    topr::locuszoom(dt, build=37, chr=6, variant="rs33924204", annotate_with_vline = 5e-09, region_size = 100000)
+
+
+  }
+)
+
+
+
+
+
+
+
+
+#
+# dt <-  MungeSumstats:::check_no_snp(sumstats_dt=dt,
+#                                     path = NULL,
+#                                     ref_genome="GRCh37",
+#                                     indels = TRUE,
+#                                     imputation_ind = FALSE,
+#                                     log_folder_ind = FALSE,
+#                                     check_save_out = NULL,
+#                                     tabix_index = FALSE,
+#                                     nThread = 1,
+#                                     log_files = vector(mode = "list"),
+#                                     dbSNP=155)$sumstats_dt
+#
+#

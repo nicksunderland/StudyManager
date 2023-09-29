@@ -13,6 +13,7 @@ map <- map |>
         c("N_SAMPLE", "N"),
         c("TYPE", "MARKER_TYPE"),
         c("EUR", "EUR_FRQ"),
+        c("EUR_FRQ_REF", "EUR_FRQ"),
         c("cptid", "cptid"),
         c("CPTID", "cptid"),
         c("CALL_RATE","CALL_RATE"),
@@ -25,7 +26,20 @@ map <- map |>
         c("q_p-value", "Q_P_VALUE"),
         c("n_studies", "NSTUDY"),
         c("effects", "DIRECTION"),
-        c("i2", "HETISQT")) |>
+        c("i2", "HETISQT"),
+        c("IMPUTED", "IMPUTED"),
+        c("Imputed", "IMPUTED"),
+        c("imputed", "IMPUTED"),
+        c("ORI_OTHER_ALLELE", "ORI_OTHER_ALLELE"),
+        c("ORI_OTHER_ALLELE_REF", "ORI_OTHER_ALLELE_REF"),
+        c("ORI_EFFECT_ALLELE", "ORI_EFFECT_ALLELE"),
+
+
+        c("OTHER_ALLELE_REF", "OTHER_ALLELE_REF"),
+        c("A0_REF", "A0"),
+        c("ORI_A0", "ORI_A0"),
+        c("ORI_A0_REF", "ORI_A0"),
+        c("REF_RSID", "REF_RSID")) |>
 
   dplyr::mutate(Corrected = dplyr::if_else(Corrected=="A1", "OTHER_ALLELE", Corrected),
                 Corrected = dplyr::if_else(Corrected=="A2", "EFFECT_ALLELE", Corrected),
@@ -79,7 +93,14 @@ for(name in unique(map$Corrected)) {
             "EUR_FRQ"="numeric",
             "cptid"="character",
             "AMBIGUOUS"="logical",
-            "CALL_RATE"="numeric")
+            "CALL_RATE"="numeric",
+            "IMPUTED"="logical",
+            "OTHER_ALLELE_REF"="character",
+            "ORI_OTHER_ALLELE"="character",
+            "ORI_OTHER_ALLELE_REF"="character",
+            "ORI_EFFECT_ALLELE"="character",
+            "ORI_A0"="character",
+            "REF_RSID"="character")
 
 
   t<-c(t,types[name])
@@ -122,10 +143,17 @@ for(name in unique(map$Corrected)) {
               "EUR_FRQ"=as.numeric,
               "cptid"=as.character,
               "AMBIGUOUS"=as.logical,
-              "CALL_RATE"=as.numeric)
+              "CALL_RATE"=as.numeric,
+              "IMPUTED"=as.logical,
+              "OTHER_ALLELE_REF"=as.character,
+              "ORI_OTHER_ALLELE"=as.character,
+              "ORI_EFFECT_ALLELE"=as.character,
+              "ORI_OTHER_ALLELE_REF"=as.character,
+              "ORI_A0"=as.character,
+              "REF_RSID"=as.character)
   f<-c(f,func[name])
 
-  if(name %in%  c("cptid","SNP","SE","P","N_CAS","N","INFO","FRQ","STRAND","CHR","BP","BETA","EFFECT_ALLELE","OTHER_ALLELE")) {
+  if(name %in%  c("cptid","SNP","SE","P","N_CAS","N","INFO","FRQ","STRAND","CHR","BP","BETA","EFFECT_ALLELE","OTHER_ALLELE","IMPUTED")) {
     logi <- TRUE
   } else {
     logi <- FALSE

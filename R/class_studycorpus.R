@@ -713,11 +713,28 @@ setMethod(
       output_filename <- sub(".out", "", basename(result@path))
       output_path <- file.path(output_dir, output_filename)
 
-      # Manhattan
+
+      # SAVE TOP HITS
+
+
+
+
+      # CREATE Manhattan
       create_manhattan(dt = dt[, c("SNP","CHR","BP","P")],
                        file_path = paste0(output_path, "_meta_manhattan.png"),
                        #highlight = filt_snps,
                        title = paste0("Manhattan Plot - ", output_filename))
+
+
+
+      # CREATE FOREST
+
+
+
+
+
+      # CREATE ZOOM PLOT
+
 
 
 

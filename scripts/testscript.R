@@ -1,8 +1,55 @@
 load_all()
 
+s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/solid",
+                  ref_path = "/Users/xx20081/Downloads/ref_1000GP_Phase3/ref_1000GP_Phase3_legend_cptid.gz",
+                  pre_qc_dir = "pre_qc",
+                  post_qc_dir = "post_qc",
+                  file_structure = list(
+                    "allcause_death" = list(
+                      "autosomes" = "(?i)^(?!.*(?:fe)?male).*allcause.*",
+                      "xchr_male" = "(?i)^(?=.*allcause)(?=.*male)(?!.*female).*",
+                      "xchr_female" = "(?i)^(?=.*allcause)(?=.*female).*"
+                    ),
+                    "composite_1" = list(
+                      "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?1.*",
+                      "xchr_male" = "(?i)^(?=.*comp(?:osite)?1)(?=.*male)(?!.*female).*",
+                      "xchr_female" = "(?i)^(?=.*comp(?:osite)?1)(?=.*female).*"
+                    ),
+                    "composite_2" = list(
+                      "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?2.*",
+                      "xchr_male" = "(?i)^(?=.*comp(?:osite)?2)(?=.*male)(?!.*female).*",
+                      "xchr_female" = "(?i)^(?=.*comp(?:osite)?2)(?=.*female).*"
+                    )
+                  )
+
+
+)
+
+#### EasyQC
+s <- run_qc(s, "allcause_death", "autosomes")
+
+#### QC plots
+load_all()
+run_qc_plots(s, "/Users/xx20081/Downloads/figures", "allcause_death", "autosomes") #, "composite_1", "composite_2"))
+
+
+pre <- data.table::fread("/Users/xx20081/Downloads/hermes_progression/solid/pre_qc/allcause_chrN_solid.txt.gz")
+post <- data.table::fread("/Users/xx20081/Downloads/hermes_progression/solid/post_qc/solid_allcause_death_autosomes_post_qc.gz")
+
+check <- sum(post$ORI_OTHER_ALLELE==post$OTHER_ALLELE)
+
+
+
+
+
+
+
+
+
+
 corpus <- StudyCorpus(corpus_dir ="/Users/xx20081/Downloads/hermes_progression", #/Users/xx20081/Documents/local_data/hermes_progression", #
                       study_type = "GWASsumstats",
-                      ref_path = "/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz",
+                      ref_path = "/Users/xx20081/Downloads/ref_1000GP_Phase3/ref_1000GP_Phase3_legend_cptid.gz",
                       mapping = StudyManager::base_column_mapping,
                       file_structure = list(
                         "allcause_death" = list(
@@ -24,27 +71,34 @@ corpus <- StudyCorpus(corpus_dir ="/Users/xx20081/Downloads/hermes_progression",
 )
 
 
-summary_dt <- run_filter_summary_plots(corpus, "/Users/xx20081/Downloads/figures", parallel_cores=12)
-
-
-# jobs, rerun all of the QC as changed filters
-# create the summary figures
-# create the zoomed fi
 
 
 
+#
+# summary_dt <- run_filter_summary_plots(corpus, "/Users/xx20081/Downloads/figures", parallel_cores=12)
+#
+#
+# # jobs, rerun all of the QC as changed filters
+# # create the summary figures
+# # create the zoomed fi
+#
+#
+#
+# corpus <- run_qc(corpus, index=2) # "allcause_death", "xchr_male",
+#
+# corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_death"), index=1)#"composite_1", "composite_2"
+#
+#
+#
+# load_all()
 
+# exclude
+excluded <- "ephesus"
+included_idx <- which(!names(studies(corpus)) %in% excluded)
 
-corpus <- run_qc(corpus, index=2) # "allcause_death", "xchr_male",
+corpus <- run_gwama(corpus, "/Users/xx20081/Downloads/meta_analysis_output", index=included_idx) #, parallel_cores=4)
 
-corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_death"), index=1)#"composite_1", "composite_2"
-
-
-
-load_all()
-corpus <- run_gwama(corpus, "/Users/xx20081/Downloads/meta_analysis_output") #, parallel_cores=4)
-
-corpus <- create_results_list(corpus, "GWASsumstats", "/Users/xx20081/Downloads/meta_analysis_output")
+#corpus <- create_results_list(corpus, "GWASsumstats", "/Users/xx20081/Downloads/meta_analysis_output")
 
 corpus <- run_meta_plots(corpus, "/Users/xx20081/Downloads/figures")
 
@@ -83,35 +137,7 @@ View(head(foo))
 
 
 
-s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/cathgen",
-                  ref_path = "/Users/xx20081/Downloads/genome_reference/ref_1000GP_Phase3_maf_biallelic.gz",
-                  pre_qc_dir = "pre_qc",
-                  post_qc_dir = "post_qc",
-                  file_structure = list(
-                    "allcause_death" = list(
-                      "autosomes" = "(?i)^(?!.*(?:fe)?male).*allcause.*",
-                      "xchr_male" = "(?i)^(?=.*allcause)(?=.*male)(?!.*female).*",
-                      "xchr_female" = "(?i)^(?=.*allcause)(?=.*female).*"
-                    ),
-                    "composite_1" = list(
-                      "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?1.*",
-                      "xchr_male" = "(?i)^(?=.*comp(?:osite)?1)(?=.*male)(?!.*female).*",
-                      "xchr_female" = "(?i)^(?=.*comp(?:osite)?1)(?=.*female).*"
-                    ),
-                    "composite_2" = list(
-                      "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?2.*",
-                      "xchr_male" = "(?i)^(?=.*comp(?:osite)?2)(?=.*male)(?!.*female).*",
-                      "xchr_female" = "(?i)^(?=.*comp(?:osite)?2)(?=.*female).*"
-                    )
-                  )
 
-
-)
-#### EasyQC
-s <- run_qc(s)
-
-#### QC plots
-run_qc_plots(s, "/Users/xx20081/Downloads/figures", c("allcause_death", "composite_1", "composite_2"))
 
 
 
