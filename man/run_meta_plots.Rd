@@ -5,20 +5,20 @@
 \alias{run_meta_plots,StudyCorpus,character-method}
 \title{run_meta_plots}
 \usage{
-run_meta_plots(object, output_dir, index = NULL, parallel_cores = NA_integer_)
+run_meta_plots(corpus, output_dir, index = NULL)
 
-\S4method{run_meta_plots}{StudyCorpus,character}(object, output_dir, index = NULL, parallel_cores = NA_integer_)
+\S4method{run_meta_plots}{StudyCorpus,character}(corpus, output_dir, index = NULL)
 }
 \arguments{
-\item{object}{.}
-
 \item{output_dir}{.}
 
 \item{index}{.}
 
-\item{parallel_cores}{.}
+\item{object}{.}
 
 \item{...}{.}
+
+\item{parallel_cores}{.}
 }
 \value{
 True

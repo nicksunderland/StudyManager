@@ -60,13 +60,12 @@ setMethod(
     # send the rest down to Study
     .Object <- callNextMethod(.Object, ...)
 
-    # .Object picked up a mapping from 'Study' initilialiser, so use to set ref map
-    ref_cols <- c("cptid","CHR","BP","MARKER_TYPE","A0","OTHER_ALLELE","EUR_FRQ","ORI_OTHER_ALLELE", "ORI_A0")
-    mapping(.Object@ref_data_file) <- set_active(.Object@mapping, ref_cols)
-
-    # required gwas cols, now set the mapping to these
-    gwas_cols <- c("SNP","SE","P","N_CAS","N","INFO","FRQ","CHR","BP","BETA","EFFECT_ALLELE","OTHER_ALLELE","STRAND")
-    .Object@mapping <- set_active(.Object@mapping, gwas_cols)  # see mapping slot of 'Study'
+    # .Object picked up a mapping from 'Study' initilialiser
+#
+#
+#     # required gwas cols, now set the mapping to these
+#     gwas_cols <- c("SNP","SE","P","N_CAS","N","INFO","FRQ","CHR","BP","BETA","EFFECT_ALLELE","OTHER_ALLELE","STRAND")
+#     .Object@mapping <- set_active(.Object@mapping, gwas_cols)  # see mapping slot of 'Study'
 
     validObject(.Object)
     rlog::log_trace(glue::glue("Init GWASsumstats: complete"))
@@ -210,6 +209,15 @@ setMethod(
 
     # extract the ref data, enforcing types and doing checks etc.
     rlog::log_info("Reading reference data into GWASsumstats object")
+    ref_map <- mapping(object@ref_data_file)
+    ref_map <- remove_col(ref_map, "OTHER_ALLELE") # deal with A1:OTHER_ALLLEL overlap
+    ref_map <- remove_col(ref_map, "ORI_OTHER_ALLELE")
+    ref_map <- remove_col(ref_map, "ORI_A1")
+    ref_map <- add_col(ref_map, col_name="A1", col_type="character", func=as.character, aliases=list("A1"=c("A1","a1","OTHER_ALLELE")))
+    ref_map <- add_col(ref_map, col_name="ORI_A1", col_type="character", func=as.character, aliases=list("ORI_A1"=c("ORI_a1","ORI_A1","ORI_OTHER_ALLELE")))
+    ref_cols <- c("cptid","MARKER_TYPE","A0","A1","ORI_A0","ORI_A1","EUR_FRQ")
+    ref_map <- set_active(ref_map, ref_cols)
+    mapping(object@ref_data_file) <- ref_map
     object@ref_data_file <- extract( object@ref_data_file )
 
     # write out
@@ -295,7 +303,7 @@ setMethod(
 
     # ensure required columns activated
     map <- mapping(object@data_files[[ keys ]]) # from each DataFile map as could be different
-    gwas_cols <- c("CHR","BP","STRAND","N_CAS","N","INFO","FRQ","EFFECT_ALLELE","OTHER_ALLELE","BETA","SE","P", "IMPUTED")
+    gwas_cols <- c("CHR","BP","STRAND","N_CAS","N","INFO","FRQ","EFFECT_ALLELE","OTHER_ALLELE","ORI_EFFECT_ALLELE", "ORI_OTHER_ALLELE","BETA","SE","P","IMPUTED")
     map <- set_active(map, gwas_cols, rest.off=TRUE)  # see mapping slot of 'Study'
     mapping(object@data_files[[ keys ]]) <- map
 
@@ -407,16 +415,6 @@ setMethod(
           --strFilterName good_call_rate
 
       ADDCOL
-          --rcdAddCol EFFECT_ALLELE
-          --colOut ORI_EFFECT_ALLELE
-          --blnOverwrite 1
-
-      ADDCOL
-          --rcdAddCol OTHER_ALLELE
-          --colOut ORI_OTHER_ALLELE
-          --blnOverwrite 1
-
-      ADDCOL
           --rcdAddCol ((EFFECT_ALLELE == 'A') & (OTHER_ALLELE == 'T')) | ((EFFECT_ALLELE == 'T') & (OTHER_ALLELE == 'A')) | ((EFFECT_ALLELE == 'C') & (OTHER_ALLELE == 'G')) | ((EFFECT_ALLELE == 'G') & (OTHER_ALLELE == 'C'))
           --colOut AMBIGUOUS
           --blnOverwrite 1
@@ -447,7 +445,6 @@ setMethod(
           --acolIn { paste0(ref_input_cols, collapse=';')  }
           --acolInClasses { paste0(ref_input_types, collapse=';') }
           --colRefMarker cptid
-          --strRefSuffix _REF
           --blnInAll 0
           --blnRefAll 0
           --blnWriteNotInRef 1
@@ -458,8 +455,8 @@ setMethod(
           --blnOverwrite 1
 
       ADJUSTALLELES
-          --colRefA1 OTHER_ALLELE_REF
-          --colRefA2 A0_REF
+          --colRefA1 A1
+          --colRefA2 A0
           --colInStrand STRAND
           --colInA1 EFFECT_ALLELE
           --colInA2 OTHER_ALLELE
@@ -472,7 +469,7 @@ setMethod(
           --blnRemoveInvalid 1
 
       FILTER
-          --rcdFilter abs(FRQ-EUR_FRQ_REF) <= { object@qc_freq_diff_threshold }
+          --rcdFilter abs(FRQ-EUR_FRQ) <= { object@qc_freq_diff_threshold }
           --strFilterName eaf_difference_within_tol
 
       ADDCOL
@@ -480,12 +477,17 @@ setMethod(
           --colOut ALLELE_FLIPPED
           --blnOverwrite 1
 
+      ADDCOL
+          --rcdAddCol ORI_OTHER_ALLELE
+          --colOut ORI_OTHER_STORE
+          --blnOverwrite 1
+
       EDITCOL
           --rcdEditCol ifelse(ALLELE_FLIPPED, ORI_EFFECT_ALLELE, ORI_OTHER_ALLELE)
           --colEdit ORI_OTHER_ALLELE
 
       EDITCOL
-          --rcdEditCol ifelse(ALLELE_FLIPPED, ORI_OTHER_ALLELE, ORI_EFFECT_ALLELE)
+          --rcdEditCol ifelse(ALLELE_FLIPPED, ORI_OTHER_STORE, ORI_EFFECT_ALLELE)
           --colEdit ORI_EFFECT_ALLELE
 
       REMOVECOL
@@ -493,6 +495,9 @@ setMethod(
 
       REMOVECOL
           --colRemove ALLELE_FLIPPED
+
+      REMOVECOL
+          --colRemove ORI_OTHER_STORE
 
       WRITE
           --strMode gz
@@ -524,13 +529,13 @@ setMethod(
 
       # save DataFile
       new_post_qc_map <- data.table::copy(object@mapping)
+      new_post_qc_map <- remove_alias(new_post_qc_map, "OTHER_ALLELE", "A1")
+      new_post_qc_map <- add_col(new_post_qc_map, col_name="A1", col_type="character", func=as.character, aliases=list("A1"=c("A1")))
       new_post_qc_map <- set_active(new_post_qc_map, unique(c(col_names(new_post_qc_map),
                                                               "CALL_RATE","AMBIGUOUS","STRAND","cptid",
                                                               "ORI_EFFECT_ALLELE", "ORI_OTHER_ALLELE",
-                                                              "OTHER_ALLELE_REF", "A0",
-                                                              "ORI_OTHER_ALLELE_REF", "ORI_A0",
-                                                              "EUR_FRQ"    )))
-
+                                                              "A1", "A0","ORI_A1", "ORI_A0",
+                                                              "EUR_FRQ" )))
       easyqc_output_file <- paste0(output_path, ".gz")
 
       if(file.exists(easyqc_output_file)) {
@@ -1260,7 +1265,6 @@ setMethod(
     rlog::log_info("Locuszoom plot...")
     rlog::log_info(glue::glue("Writing image to: {file_path}"))
 
-
     # get snp info
     snp_row <- dt[SNP==snp, ]
     snp_id <- paste0(snp_row$SNP, ":", snp_row$EFFECT_ALLELE, ":", snp_row$OTHER_ALLELE)
@@ -1276,7 +1280,7 @@ setMethod(
     vcf <- glue::glue("/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3_20130502/ALL.chr{chr}.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz")
 
     # Smaller position vcf, for faster processing
-    snp_vcf <- paste0(tempfile("position_vcf"), ".vcf")
+    snp_vcf <- tempfile("position_vcf")
     system(glue::glue("bcftools view --regions {chr}:{start}-{end} --output {snp_vcf} --output-type z {vcf}"))
     system(glue::glue("bcftools index {snp_vcf}"))
 

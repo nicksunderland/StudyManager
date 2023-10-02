@@ -40,8 +40,16 @@ setValidity(
                                                              setequal(names(object@aliases), names(object@funcs)),
                                                              setequal(names(object@aliases), names(object@active))))
     stopifnot("Mapping cannot contain duplicate column names" = !any(duplicated(names(object@aliases))))
-    stopifnot("Mapping cannot contain duplicate aliases" = !any(duplicated(unname(unlist(object@aliases)))))
 
+
+    # duplicate aliases check
+    aliases <- unlist(object@aliases)
+    if(any(duplicated(aliases))) {
+      i <- which(duplicated(aliases))
+      print("Duplicate alias:")
+      print(aliases[i])
+      stop("Mapping cannot contain duplicate aliases")
+    }
   }
 )
 
@@ -370,3 +378,34 @@ setMethod(
   }
 )
 
+
+#' remove_alias
+#'
+#' @param x .
+#' @param col_name .
+#' @param alias .
+#'
+#' @return a Datafile obj
+#' @export
+#'
+setGeneric("remove_alias", function(x, col_name, alias) standardGeneric("remove_alias"))
+#' @rdname remove_alias
+setMethod(
+  f = "remove_alias",
+  signature = c("ColMap", "character", "character"),
+  definition = function(x, col_name, alias) {
+
+    if(!col_name %in% names(x@aliases)) {
+
+      stop(paste0("Column name `", col_name, "` not found in ColMap names: ", paste0(names(x@aliases), collapse=", ")))
+
+    } else {
+
+      x@aliases[col_name] = stats::setNames(x@aliases[[col_name]][grepl(paste0("^",alias,"$"), x@aliases[[col_name]])], col_name)
+
+    }
+
+    validObject(x)
+    return(x)
+  }
+)

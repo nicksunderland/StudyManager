@@ -34,12 +34,12 @@ corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_d
 excluded <- "ephesus"
 included_idx <- which(!names(studies(corpus)) %in% excluded)
 
-corpus <- run_gwama(corpus, "/Users/xx20081/Documents/local_data/meta_analysis_output", index=included_idx)
+corpus <- run_gwama(corpus, "/Users/xx20081/Documents/local_data/meta_analysis_output", index=3)
 
 corpus <- create_results_list(corpus, "GWASsumstats", "/Users/xx20081/Documents/local_data/meta_analysis_output")
 
 load_all()
-corpus <- run_meta_plots(corpus, "/Users/xx20081/Downloads/figures")
+corpus <- run_meta_plots(corpus, "/Users/xx20081/Downloads/figures", index=c(1,4,7))
 
 
 
@@ -61,9 +61,9 @@ corpus <- run_meta_plots(corpus, "/Users/xx20081/Downloads/figures")
 #
 #
 
-
-s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/solid",
-                  ref_path = "/Users/xx20081/Downloads/ref_1000GP_Phase3/ref_1000GP_Phase3_legend_cptid.gz",
+load_all()
+s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/timi_pegasus",
+                  ref_path = "/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3/ref_1000GP_Phase3_legend_cptid.gz",
                   pre_qc_dir = "pre_qc",
                   post_qc_dir = "post_qc",
                   file_structure = list(
@@ -89,6 +89,17 @@ s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/solid",
 
 #### EasyQC
 s <- run_qc(s, "allcause_death", "autosomes")
+
+preqc  = data.table::fread("/Users/xx20081/Downloads/hermes_progression/timi_pegasus/pre_qc/TIMI_PEGASUS.allcause.gz", nThread = 11)
+postqc = data.table::fread("/Users/xx20081/Downloads/hermes_progression/timi_pegasus/post_qc/timi_pegasus_allcause_death_autosomes_post_qc.gz", nThread = 11)
+
+
+sum(postqc$ORI_A0_REF!=postqc$ORI_OTHER_ALLELE)
+
+
+
+
+
 
 #### QC plots
 load_all()

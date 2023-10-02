@@ -390,7 +390,7 @@ setMethod(
         }
 
         # set the mapping with the required columns for meta-analysis analysis
-        req_cols <- c("cptid","EFFECT_ALLELE","OTHER_ALLELE","BETA","SE","N","FRQ","STRAND")
+        req_cols <- c("cptid","EFFECT_ALLELE","OTHER_ALLELE","BETA","SE","N","FRQ","STRAND","ORI_EFFECT_ALLELE","ORI_OTHER_ALLELE")
         map <- StudyManager::base_column_mapping
         map <- set_active(map, req_cols, rest.off=TRUE)
 
@@ -402,7 +402,7 @@ setMethod(
 
 
         # write new (maybe combined file) out; then free the memory
-        tmp_data_path <- tempfile(glue::glue("{basename(s@dir)}_{paste0(key,collapse='_')}_"))
+        tmp_data_path <- file.path(output_dir, "tmp_dump", glue::glue("{basename(s@dir)}_{paste0(key,collapse='_')}"))
         write_file(qc_data_file, tmp_data_path, na=".", quote=FALSE) # GWAMA doesn't like empty fields, so set empty to "."?; also doesnt like quoted string headers
         free( qc_data_file )
 
@@ -438,8 +438,8 @@ setMethod(
                          ifelse(corpus@meta_quantitative, "--quantitative", ""),
                          ifelse(corpus@meta_indel_alleles, "--indel_alleles", ""),
                          "--name_marker cptid",
-                         "--name_ea EFFECT_ALLELE",
-                         "--name_nea OTHER_ALLELE",
+                         "--name_ea ORI_EFFECT_ALLELE",
+                         "--name_nea ORI_OTHER_ALLELE",
                          "--name_beta BETA",
                          "--name_se SE",
                          "--name_eaf FRQ",
@@ -453,24 +453,21 @@ setMethod(
 
       # GWAMA mapping
       gwama_map <- StudyManager::base_column_mapping
-      gwama_map <- remove_col(gwama_map, c("EFFECT_ALLELE","OTHER_ALLELE"))
-      gwama_map <- add_col(gwama_map, "EFFECT_ALLELE", "character", as.character, list("reference_allele"), active=TRUE)
-      gwama_map <- add_col(gwama_map, "OTHER_ALLELE", "character", as.character, list("other_allele"), active=TRUE)
-      gwama_map <- set_active(gwama_map, c("SNP","EFFECT_ALLELE","OTHER_ALLELE","FRQ","BETA","SE","BETA_95L","BETA_95U","Z","P","LOG10_P","Q_STATISTIC","Q_P_VALUE","HETISQT","N","N_CAS","DIRECTION"))
+      gwama_map <- remove_col(gwama_map, c("ORI_EFFECT_ALLELE","ORI_OTHER_ALLELE"))
+      gwama_map <- add_col(gwama_map, "ORI_EFFECT_ALLELE", "character", as.character, list("reference_allele"), active=TRUE)
+      gwama_map <- add_col(gwama_map, "ORI_OTHER_ALLELE", "character", as.character, list("other_allele"), active=TRUE)
+      gwama_map <- set_active(gwama_map, c("SNP","ORI_EFFECT_ALLELE","ORI_OTHER_ALLELE","FRQ","BETA","SE","BETA_95L","BETA_95U","Z","P","LOG10_P","Q_STATISTIC","Q_P_VALUE","HETISQT","N","N_CAS","DIRECTION"))
 
       # create the results file
       corpus@results[[key_str]] <- DataFile(path = paste0(gwama.out_file, ".out"),
                                             mapping = gwama_map)
-
-      # delete the tmp files
-      gwama.in_files <- readLines(gwama.in_file)
-      unlink(gwama.in_files)
-
     }
+
+    # delete the tmp files
+    unlink(file.path(output_dir, "tmp_dump", "*"))
 
     validObject(corpus)
     return(corpus)
-
   }
 )
 
@@ -651,38 +648,27 @@ setMethod(
 #' @return True
 #' @export
 #'
-setGeneric("run_meta_plots", function(object, output_dir, index=NULL, parallel_cores=NA_integer_) standardGeneric("run_meta_plots"))
+setGeneric("run_meta_plots", function(corpus, output_dir, index=NULL) standardGeneric("run_meta_plots"))
 #' @rdname run_meta_plots
 setMethod(
   f = "run_meta_plots",
   signature = c("StudyCorpus", "character"),
-  definition = function(object, output_dir, index=NULL, parallel_cores=NA_integer_) {
+  definition = function(corpus, output_dir, index=NULL) {
 
     rlog::log_info("Running run_meta_plots(`StudyCorpus`)...")
 
-    stopifnot("`parallel_cores` must be an integer" = (is.numeric(parallel_cores) | is.na(parallel_cores)))
-
-    if(!is.na(parallel_cores)) {
-
-      log_path <- file.path(object@corpus_dir, '__log_run_qc_plots.txt')
-      writeLines(c(""), log_path)
-      cl <- cluster(on=TRUE)
-      `%do_or_dopar%` <- foreach::`%dopar%`
-
-    } else {
-
-      `%do_or_dopar%` <- foreach::`%do%`
-
+    if(is.null(index)) {
+      index <- 1:length(results(corpus))
     }
 
-    outcome_names = names(results(object, index))
-    foreach::foreach(result = results(object, index), name = outcome_names) %do_or_dopar% {
+    # do for each meta-analysis outcome
+    for(i in index) {
 
-      if(!is.na(parallel_cores)) {
+      # the result DataFile
+      result <- results(corpus, i)[[1]]
 
-        sink(log_path, append=TRUE)
-
-      }
+      #outcome name/tag
+      name <- names(results(corpus, i))
 
       # do the processing of the result
       stopifnot(dir.exists(output_dir))
@@ -796,8 +782,8 @@ setMethod(
     }
 
     # return
-    validObject(object)
-    return(object)
+    validObject(corpus)
+    return(corpus)
   }
 )
 

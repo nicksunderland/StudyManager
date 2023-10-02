@@ -1,3 +1,4 @@
+load_all()
 
 a = list()
 t = character()
@@ -31,16 +32,18 @@ map <- map |>
         c("Imputed", "IMPUTED"),
         c("imputed", "IMPUTED"),
         c("ORI_OTHER_ALLELE", "ORI_OTHER_ALLELE"),
-        c("ORI_OTHER_ALLELE_REF", "ORI_OTHER_ALLELE_REF"),
         c("ORI_EFFECT_ALLELE", "ORI_EFFECT_ALLELE"),
-
-
-        c("OTHER_ALLELE_REF", "OTHER_ALLELE_REF"),
+        c("A1_REF", "A1"),
+        c("ORI_A1_REF", "ORI_A1"),
+        c("ORI_a1", "ORI_A1"),
+        c("ORI_OTHER_ALLELE_REF","ORI_A1"),
+        c("A0", "A0"),
+        c("a0", "A0"),
         c("A0_REF", "A0"),
         c("ORI_A0", "ORI_A0"),
+        c("ORI_a0", "ORI_A0"),
         c("ORI_A0_REF", "ORI_A0"),
         c("REF_RSID", "REF_RSID")) |>
-
   dplyr::mutate(Corrected = dplyr::if_else(Corrected=="A1", "OTHER_ALLELE", Corrected),
                 Corrected = dplyr::if_else(Corrected=="A2", "EFFECT_ALLELE", Corrected),
                 Corrected = dplyr::if_else(Corrected=="A*", "A0", Corrected)) |>
@@ -95,11 +98,10 @@ for(name in unique(map$Corrected)) {
             "AMBIGUOUS"="logical",
             "CALL_RATE"="numeric",
             "IMPUTED"="logical",
-            "OTHER_ALLELE_REF"="character",
             "ORI_OTHER_ALLELE"="character",
-            "ORI_OTHER_ALLELE_REF"="character",
             "ORI_EFFECT_ALLELE"="character",
             "ORI_A0"="character",
+            "ORI_A1"="character",
             "REF_RSID"="character")
 
 
@@ -145,11 +147,10 @@ for(name in unique(map$Corrected)) {
               "AMBIGUOUS"=as.logical,
               "CALL_RATE"=as.numeric,
               "IMPUTED"=as.logical,
-              "OTHER_ALLELE_REF"=as.character,
               "ORI_OTHER_ALLELE"=as.character,
               "ORI_EFFECT_ALLELE"=as.character,
-              "ORI_OTHER_ALLELE_REF"=as.character,
               "ORI_A0"=as.character,
+              "ORI_A1"=as.character,
               "REF_RSID"=as.character)
   f<-c(f,func[name])
 
