@@ -317,6 +317,11 @@ setMethod(
     # clean up previous runs
     old_run_files <- list.files(output_dir, pattern="_gwama.in", full.names=TRUE)
     unlink(old_run_files)
+    tmp_data_dump <- file.path(output_dir, "tmp_dump")
+    if(!dir.exists(tmp_data_dump)) {
+      unlink(file.path(tmp_data_dump, "*"))
+      dir.create(tmp_data_dump, showWarnings = F)
+    }
 
     # parallel?
     if(!is.na(parallel_cores)) {
@@ -402,7 +407,11 @@ setMethod(
 
 
         # write new (maybe combined file) out; then free the memory
-        tmp_data_path <- file.path(output_dir, "tmp_dump", glue::glue("{basename(s@dir)}_{paste0(key,collapse='_')}"))
+        tmp_data_path <- file.path(tmp_data_dump, glue::glue("{basename(s@dir)}_{paste0(key,collapse='_')}"))
+        print("dump files:")
+        print(list.files(tmp_data_dump))
+        print("this file:")
+        print(tmp_data_path)
         write_file(qc_data_file, tmp_data_path, na=".", quote=FALSE) # GWAMA doesn't like empty fields, so set empty to "."?; also doesnt like quoted string headers
         free( qc_data_file )
 
@@ -464,7 +473,7 @@ setMethod(
     }
 
     # delete the tmp files
-    unlink(file.path(output_dir, "tmp_dump", "*"))
+    unlink(file.path(tmp_data_dump, "*"))
 
     validObject(corpus)
     return(corpus)

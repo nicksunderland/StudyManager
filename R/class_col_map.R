@@ -401,7 +401,8 @@ setMethod(
 
     } else {
 
-      x@aliases[col_name] = stats::setNames(x@aliases[[col_name]][grepl(paste0("^",alias,"$"), x@aliases[[col_name]])], col_name)
+      new_aliases <- x@aliases[[col_name]][!grepl(paste0("^",alias,"$"), x@aliases[[col_name]])]
+      x@aliases[[col_name]] <- new_aliases
 
     }
 

@@ -3,3 +3,4 @@
 ^LICENSE\.md$
 ^scripts
 ^data-raw$
+^R/zzz.R
