@@ -5,9 +5,21 @@
 \alias{create_manhattan,data.table-method}
 \title{create_manhattan}
 \usage{
-create_manhattan(dt, file_path = getwd(), highlight = NULL, ...)
+create_manhattan(
+  dt,
+  file_path = getwd(),
+  highlight = NULL,
+  annotate = 5e-08,
+  ...
+)
 
-\S4method{create_manhattan}{data.table}(dt, file_path = getwd(), highlight = NULL, ...)
+\S4method{create_manhattan}{data.table}(
+  dt,
+  file_path = getwd(),
+  highlight = NULL,
+  annotate = 5e-08,
+  ...
+)
 }
 \arguments{
 \item{dt}{.}

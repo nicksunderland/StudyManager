@@ -345,6 +345,50 @@ setMethod(
 
       START EASYQC
 
+      CLEAN
+          --rcdClean is.na(EFFECT_ALLELE)
+          --strCleanName numDrop_Missing_EA
+
+      CLEAN
+          --rcdClean is.na(OTHER_ALLELE)
+          --strCleanName numDrop_Missing_OA
+
+      CLEAN
+          --rcdClean is.na(P)
+          --strCleanName numDrop_Missing_P
+
+      CLEAN
+          --rcdClean is.na(BETA)
+          --strCleanName numDrop_Missing_BETA
+
+      CLEAN
+          --rcdClean is.na(SE)
+          --strCleanName numDrop_Missing_SE
+
+      CLEAN
+          --rcdClean is.na(FRQ)
+          --strCleanName numDrop_Missing_FRQ
+
+      CLEAN
+          --rcdClean is.na(N)
+          --strCleanName numDrop_Missing_N
+
+      CLEAN
+          --rcdClean P<0|P>1
+          --strCleanName numDrop_invalid_P
+
+      CLEAN
+          --rcdClean SE<=0|SE==Inf
+          --strCleanName numDrop_invalid_SE
+
+      CLEAN
+          --rcdClean abs(BETA)==Inf
+          --strCleanName numDrop_invalid_BETA
+
+      CLEAN
+          --rcdClean (FRQ<0)|(FRQ>1)
+          --strCleanName numDrop_invalid_FRQ
+
       FILTER
           --rcdFilter INFO >= { object@qc_qual_threshold }
           --strFilterName good_qual_score
@@ -576,7 +620,7 @@ setMethod(
       }
 
       # set the mapping with the required columns for analysis
-      req_cols <- c("cptid","SNP","EFFECT_ALLELE","OTHER_ALLELE","CHR","BP","P","BETA","INFO","FRQ", "EUR_FRQ")
+      req_cols <- c("cptid","SNP","EFFECT_ALLELE","OTHER_ALLELE","CHR","BP","P","BETA","SE","INFO","FRQ", "EUR_FRQ")
       maps <- mapping(object@data_files[[ keys ]])
       maps <- set_active(maps, req_cols)
 
@@ -646,6 +690,11 @@ setMethod(
       create_pvalhist(dt = dt[, c("P","QC_STATUS")],
                       file_path = paste0(output_path, "_qc_pval_hist.png"),
                       title = paste0(c("P value histogram -", basename(object@dir), keys), collapse=" "))
+
+      # PZ plot
+      create_pz(dt = dt[, c("P", "BETA", "SE", "QC_STATUS")],
+                file_path = paste0(output_path, "_qc_pz_plot.png"),
+                title = paste0(c("PZ plot -", basename(object@dir), keys), collapse=" "))
 
       # Effect size histogram
       create_eshist(dt = dt[, c("BETA","QC_STATUS")],
@@ -929,6 +978,84 @@ setMethod(
   }
 )
 
+
+
+#' create_pz
+#'
+#' @param dt .
+#' @param file_path .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
+setGeneric("create_pz", function(dt, file_path=getwd(), ...) standardGeneric("create_pz"))
+#' @rdname create_pz
+setMethod(
+  f = "create_pz",
+  signature = c("data.table"),
+  definition = function(dt, file_path=getwd(), ...) {
+
+    # ensure there is some data
+    stopifnot(ncol(dt) > 0)
+    stopifnot(nrow(dt) > 0)
+
+    # choose a pallete
+    palette <- c(wesanderson::wes_palette("GrandBudapest1"), wesanderson::wes_palette("GrandBudapest2"))
+    #c("#F1BB7B", "#FD6467", "#5B1A18", "#D67236", "#E6A0C4", "#C6CDF7", "#D8A499", "#7294D4")
+
+    # create dir if needed
+    dir.create(dirname(file_path), recursive=TRUE, showWarnings=FALSE)
+
+    # logging info
+    rlog::log_info("PZ plot...")
+    rlog::log_info(glue::glue("Writing image to: {file_path}"))
+
+    # generate PZ-plot but with ggplot instead of qqman
+    plot <- dt |>
+      dplyr::filter(!is.na(P),
+                    !is.nan(P),
+                    !is.null(P),
+                    is.finite(P),
+                    P < 1.0,
+                    P > 0.0,
+                    !is.na(BETA),
+                    !is.nan(BETA),
+                    !is.null(BETA),
+                    is.finite(BETA),
+                    !is.na(SE),
+                    !is.nan(SE),
+                    !is.null(SE),
+                    is.finite(SE)) |>
+      dplyr::group_by(QC_STATUS) |>
+      dplyr::mutate(observed = -log10(sort(P, decreasing=FALSE)),
+                    expected = -log10(sort((BETA / SE), decreasing=FALSE))) |>
+      dplyr::ungroup() |>
+      ggplot2::ggplot(ggplot2::aes(x = expected, y = observed)) +
+      ggplot2::geom_point(size = 0.5, color=palette[8]) +
+      ggplot2::geom_abline(slope=1, intercept=0, color="darkred", linetype = "dotted") +
+      ggplot2::labs(...,
+                    x = "P.ztest (-log10)",
+                    y = "P (-log10)",
+                    color = NULL) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(aspect.ratio = 1) +
+      ggplot2::facet_grid(cols = ggplot2::vars(QC_STATUS))
+
+    # save plot
+    grDevices::png(filename=file_path, bg="white", height=600, width=1200, units="px")
+    print(plot)
+    grDevices::dev.off()
+
+    # return
+    invisible(plot)
+  }
+)
+
+
+
+
+
 #' create_manhattan
 #'
 #' @param dt .
@@ -937,14 +1064,15 @@ setMethod(
 #' @param ... .
 #'
 #' @return .
+#' @importFrom magrittr %>%
 #' @export
 #'
-setGeneric("create_manhattan", function(dt, file_path=getwd(), highlight=NULL, ...) standardGeneric("create_manhattan"))
+setGeneric("create_manhattan", function(dt, file_path=getwd(), highlight=NULL, annotate=5e-8, ...) standardGeneric("create_manhattan"))
 #' @rdname create_manhattan
 setMethod(
   f = "create_manhattan",
   signature = c("data.table"),
-  definition = function(dt, file_path=getwd(), highlight=NULL, ...) {
+  definition = function(dt, file_path=getwd(), highlight=NULL, annotate=5e-8, ...) {
 
     # ensure there is some data
     stopifnot(ncol(dt) > 0)
@@ -982,8 +1110,13 @@ setMethod(
       dplyr::mutate( BPcum=BP+tot ) |>
 
       # Add highlight and annotation information
-      dplyr::mutate( is_highlight=ifelse(SNP %in% highlight, "yes", "no")) |>
-      dplyr::mutate( is_annotate=ifelse(-log10(P)>-log10(5e-8), "yes", "no"))
+      dplyr::mutate( is_highlight=ifelse(SNP %in% highlight, "yes", "no")) %>%
+      {if(is.numeric(annotate)) {
+        dplyr::mutate(., is_annotate=ifelse(-log10(P)>-log10(annotate), "yes", "no"))
+      } else {
+        dplyr::mutate(., is_annotate=ifelse(SNP %in% annotate, "yes", "no"))
+      }
+      }
 
     # Prepare X axis
     axisdf <- d |>
@@ -1048,12 +1181,12 @@ setMethod(
 #' @importFrom viridis scale_fill_viridis
 #' @export
 #'
-  setGeneric("create_heatmap", function(dt, x, y, z, fx=NULL, fy=NULL, x_lab="x", y_lab="y", fill_lab="fill", h=1200, w=1200, file_path=getwd(), ...) standardGeneric("create_heatmap"))
+  setGeneric("create_heatmap", function(dt, x, y, z, fx=NULL, fy=NULL, x_lab="x", y_lab="y", fill_lab="fill", fill_lims=c(0,1), h=1200, w=1200, file_path=getwd(), ...) standardGeneric("create_heatmap"))
   #' @rdname create_heatmap
   setMethod(
     f = "create_heatmap",
     signature = c("data.table"),
-    definition = function(dt, x, y, z, fx=NULL, fy=NULL, x_lab="x", y_lab="y", fill_lab="fill", h=1200, w=1200, file_path=getwd(), ...) {
+    definition = function(dt, x, y, z, fx=NULL, fy=NULL, x_lab="x", y_lab="y", fill_lab="fill", fill_lims=c(0,1), h=1200, w=1200, file_path=getwd(), ...) {
 
       # ensure there is some data
       stopifnot(ncol(dt) > 0)
@@ -1070,7 +1203,7 @@ setMethod(
       plot <- ggplot2::ggplot(dt, ggplot2::aes(x=get(x), y=get(y), fill=get(z))) +
         ggplot2::geom_tile() +
         ggplot2::coord_fixed() +
-        viridis::scale_fill_viridis(option="magma", discrete=FALSE) +
+        viridis::scale_fill_viridis(option="magma", discrete=FALSE, limits=fill_lims) +
         ggplot2::labs(...,
                       x = x_lab,
                       y = y_lab,
@@ -1101,11 +1234,11 @@ setMethod(
 #' create_locuszoom
 #'
 #' @param dt .
+#' @param snp .
 #' @param file_path .
 #' @param ... .
 #'
 #' @return .
-#' @importFrom LDlinkR LDproxy
 #' @importFrom topr locuszoom
 #' @export
 #'
@@ -1116,34 +1249,117 @@ setMethod(
   signature = c("data.table", "character"),
   definition = function(dt, snp, file_path=getwd(), ...) {
 
-    dt <- data.table::fread("/Users/xx20081/Downloads/meta_analysis_output/allcause_death_autosomes/allcause_death_autosomes.out")
+    # ensure there is some data
+    stopifnot(ncol(dt) > 0)
+    stopifnot(nrow(dt) > 0)
 
-    snp = dt[[which.min(dt$`p-value`), "rs_number"]]
-    snp = "7:19082644"
+    # create dir if needed
+    dir.create(dirname(file_path), recursive=TRUE, showWarnings=FALSE)
 
-    # if of format "7:23444871" / chr:pos - change to "chr7:23444871"
-    if(grepl("^([0-9]{1,2}|X|Y):", snp)) snp <- paste0("chr", sub("([0-9]+:[0-9]+)(?:[:].*)","\\1", snp))
+    # logging info
+    rlog::log_info("Locuszoom plot...")
+    rlog::log_info(glue::glue("Writing image to: {file_path}"))
 
-    # get the LD with the surrounding SNPs; within +/- 500kb and R2>0.01 (fixed values with the LDlinkR::LDproxy function)
-    proxies <- LDlinkR::LDproxy(snp, genome_build="grch37", pop="EUR", r2d="r2", token="c9c23f7559df") |>
-      dplyr::mutate(Coord = sub("chr","",Coord)) |>
-      dplyr::select("Coord","SNP"="RS_Number", "R2")
 
-    # TODO: investigate the LDexpress() function - Search if a list of variants (or variants in LD with those variants) is associated with
-    # gene expression in tissues of interest. Quantitative trait loci data is downloaded from the GTEx Portal (GTEx v8).
-    # https://ldlink.nih.gov/?tab=help#LDproxy
+    # get snp info
+    snp_row <- dt[SNP==snp, ]
+    snp_id <- paste0(snp_row$SNP, ":", snp_row$EFFECT_ALLELE, ":", snp_row$OTHER_ALLELE)
 
-    # join on the R2 - only interested in linkage with the markers that we kept in our initial reference
+    # set up region
+    chr <- snp_row$CHR
+    pos <- snp_row$BP
+    window_kb <- 500
+    start <- as.integer(pos)-(window_kb*1000)
+    end <- as.integer(pos)+(window_kb*1000)
+
+    # Chromosome vcf
+    vcf <- glue::glue("/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3_20130502/ALL.chr{chr}.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz")
+
+    # Smaller position vcf, for faster processing
+    snp_vcf <- paste0(tempfile("position_vcf"), ".vcf")
+    system(glue::glue("bcftools view --regions {chr}:{start}-{end} --output {snp_vcf} --output-type z {vcf}"))
+    system(glue::glue("bcftools index {snp_vcf}"))
+
+    # calculate LD
+    # https://www.cog-genomics.org/plink/1.9/data#set_missing_var_ids
+    ld_file <- tempfile("ld_data")
+    system(glue::glue("plink --vcf {snp_vcf} --r2 gz --set-missing-var-ids @:#:\\$1:\\$2 --ld-snp {snp_id} --ld-window-kb {window_kb} --ld-window 99999 --ld-window-r2 0 --out {ld_file}"))
+    ld_dat <- data.table::fread(paste0(ld_file, ".ld.gz"))
+
+    # create the dt for locus zoom
     dt <- dt |>
-      dplyr::mutate(CHROM = sub(":.*","",rs_number),
-                    POS = sub(".*:","",rs_number)) |>
-      dplyr::select("CHROM","POS","P"=`p-value`, "rs_number") |>
-      dplyr::left_join(proxies, by=c("rs_number"="Coord")) |>
-      dplyr::filter(CHROM==7)
+      dplyr::mutate(SNPID = paste0(CHR, ":", BP, ":", EFFECT_ALLELE, ":", OTHER_ALLELE)) |>
+      dplyr::filter(CHR==chr, BP>=start, BP<=end) |>
+      dplyr::left_join(ld_dat, by=c("SNPID"="SNP_B")) |>
+      dplyr::select(CHROM=CHR, POS=BP, P, SNPID, R2)
 
     # plot locus zoom
-    topr::locuszoom(dt, build=37, chr=6, variant="rs33924204", annotate_with_vline = 5e-09, region_size = 100000)
 
+
+    # save plot
+    grDevices::png(filename=file_path, bg="white", height=600, width=800, units="px")
+    topr::locuszoom(dt,
+                    build=37,
+                    variant=dt[SNPID==snp_id, ],
+                    annotate_with_vline = 5e-08,
+                    sign_thresh = 5e-8,
+                    region_size = end-start,
+                    ...)
+    grDevices::dev.off()
+
+    # return
+    invisible(plot)
+
+  }
+)
+
+
+#' create_forestplot
+#'
+#' @param dt .
+#' @param file_path .
+#' @param ... .
+#'
+#' @return .
+#' @export
+#'
+setGeneric("create_forestplot", function(dt, file_path=getwd(), ...) standardGeneric("create_forestplot"))
+#' @rdname create_forestplot
+setMethod(
+  f = "create_forestplot",
+  signature = c("data.table", "character"),
+  definition = function(dt, file_path=getwd(), ...) {
+
+    # ensure there is some data
+    stopifnot(ncol(dt) > 0)
+    stopifnot(nrow(dt) > 0)
+
+    # create dir if needed
+    dir.create(dirname(file_path), recursive=TRUE, showWarnings=FALSE)
+
+    # logging info
+    rlog::log_info("Forest plot...")
+    rlog::log_info(glue::glue("Writing image to: {file_path}"))
+
+    plot <- ggplot2::ggplot(data = dt,
+                    ggplot2::aes(y=as.character(study), x=as.numeric(BETA),
+                                 xmin=as.numeric(upper),
+                                 xmax=as.numeric(lower))) +
+      geom_point() +
+      geom_errorbarh(data = subset(dt, as.numeric(BETA) != 0), height = 0.1) +
+      scale_x_continuous(limits = c(-max(abs(dt$lower), abs(dt$upper)),
+                                    max(abs(dt$lower), abs(dt$upper)))) +
+      ggplot2::labs(...,
+                    x = "Effect size (BETA)",
+                    y = "Study")
+
+    # save plot
+    grDevices::png(filename=file_path, bg="white", height=800, width=600, units="px")
+    print(plot)
+    grDevices::dev.off()
+
+    # return
+    invisible(plot)
 
   }
 )
@@ -1151,21 +1367,3 @@ setMethod(
 
 
 
-
-
-
-
-#
-# dt <-  MungeSumstats:::check_no_snp(sumstats_dt=dt,
-#                                     path = NULL,
-#                                     ref_genome="GRCh37",
-#                                     indels = TRUE,
-#                                     imputation_ind = FALSE,
-#                                     log_folder_ind = FALSE,
-#                                     check_save_out = NULL,
-#                                     tabix_index = FALSE,
-#                                     nThread = 1,
-#                                     log_files = vector(mode = "list"),
-#                                     dbSNP=155)$sumstats_dt
-#
-#

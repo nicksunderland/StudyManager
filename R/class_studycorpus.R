@@ -432,7 +432,7 @@ setMethod(
 
       # the GWAMA command
       gwama_exe <- system.file("bin", "GWAMA_v2", "GWAMA", package="StudyManager")
-      gwama_cmd <- paste(gwama_exe,  # need to change this
+      gwama_cmd <- paste(gwama_exe,
                          "--filelist", gwama.in_file,
                          "--output", gwama.out_file,
                          ifelse(corpus@meta_quantitative, "--quantitative", ""),
@@ -444,7 +444,8 @@ setMethod(
                          "--name_se SE",
                          "--name_eaf FRQ",
                          "--name_n N",
-                         "--name_strand STRAND"
+                         "--name_strand STRAND",
+                         "" #--random
       )
 
       # run the meta-analysis
@@ -618,9 +619,6 @@ setMethod(
       # generate the plots as side effects
       run_qc_plots(study, output_dir, ...)
 
-      # return the QC summary data
-      qc_summary_data <- run_qc_summary(study, ...)
-
     }
 
     if(!is.na(parallel_cores)) {
@@ -694,7 +692,7 @@ setMethod(
       gwama_map <- remove_col(gwama_map, c("EFFECT_ALLELE","OTHER_ALLELE"))
       gwama_map <- add_col(gwama_map, "EFFECT_ALLELE", "character", as.character, list("reference_allele"), active=TRUE)
       gwama_map <- add_col(gwama_map, "OTHER_ALLELE", "character", as.character, list("other_allele"), active=TRUE)
-      gwama_map <- set_active(gwama_map, c("SNP","P"))
+      gwama_map <- set_active(gwama_map, c("SNP","P", "EFFECT_ALLELE", "OTHER_ALLELE", "BETA"))
 
       # set the mapping into the results DataFile and extract
       rlog::log_debug(glue::glue("Extracting meta-analysis results data for DataFile: {result@path}"))
@@ -714,29 +712,79 @@ setMethod(
       output_path <- file.path(output_dir, output_filename)
 
 
-      # SAVE TOP HITS
-
-
+      # GET TOP HITS
+      # wont need the is.finite once I sort the QC procedure.....
+      top_hits <- dt[P<5e-8 & is.finite(BETA), ]
+      data.table::fwrite(top_hits, paste0(output_path, "_meta_tophits.tsv"), sep="\t")
 
 
       # CREATE Manhattan
       create_manhattan(dt = dt[, c("SNP","CHR","BP","P")],
                        file_path = paste0(output_path, "_meta_manhattan.png"),
-                       #highlight = filt_snps,
+                       highlight = top_hits[,SNP],
+                       annotate = top_hits[,SNP],
                        title = paste0("Manhattan Plot - ", output_filename))
 
-
-
       # CREATE FOREST
+      for(hit_idx in seq_along(nrow(top_hits))) {
 
+        study_contrib <- data.table::data.table(cptid=character(),
+                                                CHR=character(),
+                                                BP=integer(),
+                                                P=numeric(),
+                                                BETA=numeric(),
+                                                SE=numeric(),
+                                                EFFECT_ALLELE=character(),
+                                                OTHER_ALLELE=character(),
+                                                study=character())
+        hit <- top_hits[hit_idx, ]
 
+        key = c(sub("(.*?_.*?)_.*", "\\1", name), sub("(?:.*?_.*?)_(.*)", "\\1", name))
 
+        for(study in studies(corpus)) {
 
+          empty_row <- list(study = basename(study@dir),
+                            cptid = NA_character_,
+                            CHR = hit$CHR,
+                            BP = hit$BP,
+                            BETA = 0,
+                            SE = 0,
+                            P = NA_real_,
+                            EFFECT_ALLELE = hit$EFFECT_ALLELE,
+                            OTHER_ALLELE = hit$OTHER_ALLELE)
 
-      # CREATE ZOOM PLOT
+          if(keys_valid(study, key)) {
+            dat <- get_data(extract( study@qc_data_files[[ key ]] ))
+            dat <- dat |> dplyr::select(cptid, CHR, BP, P, BETA, SE, EFFECT_ALLELE, OTHER_ALLELE)
+            dat <- dat[CHR==hit$CHR & BP==hit$BP, ]
+            dat[ , study := .(basename(study@dir)) ]
 
+            if(nrow(dat)==0) {
+              dat <- data.table(t(empty_row))
+            }
+            study_contrib <- rbind(study_contrib, dat)
+          } else {
+            study_contrib <- rbind(study_contrib, empty_row, fill=T)
+          }
 
+        }
 
+        study_contrib[ , c("upper", "lower") := list(as.numeric(BETA)-as.numeric(SE), as.numeric(BETA)+as.numeric(SE))]
+
+        create_forestplot(study_contrib,
+                          file_path = paste0(output_path, "_", gsub(":","_",top_hits[hit_idx, SNP]), "_meta_forestplot.png"),
+                          title = paste0("Forest Plot - ", top_hits[hit_idx, SNP], " - ", output_filename))
+
+      }
+
+      # CREATE ZOOM PLOTS
+      for(hit_idx in seq_along(nrow(top_hits))) {
+        file_path <- paste0(output_path, "_", gsub(":","_",top_hits[hit_idx, SNP]), "_meta_locuszoom.png")
+        create_locuszoom(dt,
+                         snp = top_hits[hit_idx, SNP],
+                         file_path = file_path,
+                         title = paste0("LocusZoom - ", top_hits[hit_idx, SNP], " - ", output_filename))
+      }
 
     }
 
@@ -821,7 +869,7 @@ setMethod(
       tidyr::pivot_longer(starts_with("FILTER_"), names_to="FILTER", values_to="FAIL_RATE") |>
       data.table::as.data.table() |>
       create_heatmap(x="study", y="FILTER", z="FAIL_RATE",
-                     x_lab="Study", y_lab="Filter", fill_lab="Fail rate %",
+                     x_lab="Study", y_lab="Filter", fill_lab="Fail rate %", fill_lims=c(0,0.3),
                      file_path=file.path(output_dir, "filter_summary_studies.png"),
                      title = "Filter summary - overview")
 
@@ -837,7 +885,7 @@ setMethod(
       tidyr::pivot_longer(starts_with("FILTER_"), names_to="FILTER", values_to="FAIL_RATE") |>
       data.table::as.data.table() |>
       create_heatmap(x="study", y="FILTER", z="FAIL_RATE", fy="outcome",
-                     x_lab="Study", y_lab="Filter", fill_lab="Fail rate %",
+                     x_lab="Study", y_lab="Filter", fill_lab="Fail rate %",fill_lims=c(0,0.3),
                      file_path=file.path(output_dir, "filter_summary_studies_outcome.png"),
                      title = "Filter summary - outcome")
 
@@ -853,7 +901,7 @@ setMethod(
       tidyr::pivot_longer(starts_with("FILTER_"), names_to="FILTER", values_to="FAIL_RATE") |>
       data.table::as.data.table() |>
       create_heatmap(x="study", y="FILTER", z="FAIL_RATE", fy="chrom_type",
-                     x_lab="Study", y_lab="Filter", fill_lab="Fail rate %",
+                     x_lab="Study", y_lab="Filter", fill_lab="Fail rate %",fill_lims=c(0,0.3),
                      file_path=file.path(output_dir, "filter_summary_studies_chrom_type.png"),
                      title = "Filter summary - autosomes vs. X-chr")
 
@@ -871,7 +919,7 @@ setMethod(
       tidyr::pivot_longer(starts_with("FILTER_"), names_to="FILTER", values_to="FAIL_RATE") |>
       data.table::as.data.table() |>
       create_heatmap(x="CHR", y="FILTER", z="FAIL_RATE", fy="study",
-                     x_lab="Chromosome", y_lab="Filter", fill_lab="Fail rate %",
+                     x_lab="Chromosome", y_lab="Filter", fill_lab="Fail rate %",fill_lims=c(0,0.3),
                      file_path=file.path(output_dir, "filter_summary_studies_chromosome.png"),
                      h = 4800,
                      title = "Filter summary - chromosome")

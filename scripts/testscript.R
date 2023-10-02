@@ -1,5 +1,67 @@
 load_all()
 
+corpus <- StudyCorpus(corpus_dir ="/Users/xx20081/Downloads/hermes_progression",# "/Users/xx20081/Documents/local_data/hermes_progression",
+                      study_type = "GWASsumstats",
+                      ref_path = "/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3/ref_1000GP_Phase3_legend_cptid.gz",
+                      mapping = StudyManager::base_column_mapping,
+                      file_structure = list(
+                        "allcause_death" = list(
+                          "autosomes" = "(?i)^(?!.*(?:fe)?male).*allcause.*",
+                          "xchr_male" = "(?i)^(?=.*allcause)(?=.*male)(?!.*female).*",
+                          "xchr_female" = "(?i)^(?=.*allcause)(?=.*female).*"
+                        ),
+                        "composite_1" = list(
+                          "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?1.*",
+                          "xchr_male" = "(?i)^(?=.*comp(?:osite)?1)(?=.*male)(?!.*female).*",
+                          "xchr_female" = "(?i)^(?=.*comp(?:osite)?1)(?=.*female).*"
+                        ),
+                        "composite_2" = list(
+                          "autosomes" = "(?i)^(?!.*(?:fe)?male).*comp(?:osite)?2.*",
+                          "xchr_male" = "(?i)^(?=.*comp(?:osite)?2)(?=.*male)(?!.*female).*",
+                          "xchr_female" = "(?i)^(?=.*comp(?:osite)?2)(?=.*female).*"
+                        )
+                      )
+)
+
+corpus <- run_qc(corpus)
+
+# # run tonight
+corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_death", "composite_1", "composite_2"))
+# # run tonight
+# corpus <- run_filter_summary_plots(corpus, "/Users/xx20081/Downloads/figures", parallel_cores=12)
+
+# exclude
+excluded <- "ephesus"
+included_idx <- which(!names(studies(corpus)) %in% excluded)
+
+corpus <- run_gwama(corpus, "/Users/xx20081/Documents/local_data/meta_analysis_output", index=included_idx)
+
+corpus <- create_results_list(corpus, "GWASsumstats", "/Users/xx20081/Documents/local_data/meta_analysis_output")
+
+load_all()
+corpus <- run_meta_plots(corpus, "/Users/xx20081/Downloads/figures")
+
+
+
+
+
+
+
+
+
+
+#
+# summary_dt <- run_filter_summary_plots(corpus, "/Users/xx20081/Downloads/figures", parallel_cores=12)
+#
+#
+# # jobs, rerun all of the QC as changed filters
+# # create the summary figures
+# # create the zoomed fi
+#
+#
+#
+
+
 s <- GWASsumstats(dir = "/Users/xx20081/Downloads/hermes_progression/solid",
                   ref_path = "/Users/xx20081/Downloads/ref_1000GP_Phase3/ref_1000GP_Phase3_legend_cptid.gz",
                   pre_qc_dir = "pre_qc",

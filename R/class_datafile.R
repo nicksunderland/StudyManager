@@ -384,6 +384,12 @@ setMethod(
 
       rlog::log_debug(glue::glue("Extract from DataFile: ../{basename(dirname(x@path))}/{basename(x@path)}"))
 
+      # datafile exists check
+      if(!file.exists(x@path)) {
+        rlog::log_error(glue::glue("file does not exist at: {x@path}"))
+        stop("data file not found")
+      }
+
       # active columns
       active_col_map <- col_map(x)
       rlog::log_debug(glue::glue("Active mapped columns: {paste0(names(active_col_map),'=',active_col_map,collapse=',')}"))
