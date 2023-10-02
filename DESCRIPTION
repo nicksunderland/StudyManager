@@ -23,7 +23,11 @@ Imports:
     tibble,
     wesanderson,
     EasyX,
-    doParallel
+    doParallel,
+    magrittr,
+    tidyr,
+    topr,
+    viridis
 Remotes:
     github::git@github.com:winkusch/EasyX
 Depends: 
