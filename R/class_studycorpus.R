@@ -318,8 +318,9 @@ setMethod(
     old_run_files <- list.files(output_dir, pattern="_gwama.in", full.names=TRUE)
     unlink(old_run_files)
     tmp_data_dump <- file.path(output_dir, "tmp_dump")
-    if(!dir.exists(tmp_data_dump)) {
+    if(dir.exists(tmp_data_dump)) {
       unlink(file.path(tmp_data_dump, "*"))
+    } else {
       dir.create(tmp_data_dump, showWarnings = F)
     }
 
@@ -474,6 +475,7 @@ setMethod(
 
     # delete the tmp files
     unlink(file.path(tmp_data_dump, "*"))
+    unlink(tmp_data_dump, recursive = T)
 
     validObject(corpus)
     return(corpus)

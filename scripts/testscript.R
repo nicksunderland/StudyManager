@@ -34,7 +34,7 @@ corpus <- run_qc_plots(corpus, "/Users/xx20081/Downloads/figures", c("allcause_d
 excluded <- "ephesus"
 included_idx <- which(!names(studies(corpus)) %in% excluded)
 
-corpus <- run_gwama(corpus, "/Users/xx20081/Documents/local_data/meta_analysis_output", index=3)
+corpus <- run_gwama(corpus, "/Users/xx20081/Documents/local_data/meta_analysis_output")
 
 corpus <- create_results_list(corpus, "GWASsumstats", "/Users/xx20081/Documents/local_data/meta_analysis_output")
 
