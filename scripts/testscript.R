@@ -39,7 +39,7 @@ corpus <- run_gwama(corpus, "/Users/xx20081/Documents/local_data/meta_analysis_o
 corpus <- create_results_list(corpus, "GWASsumstats", "/Users/xx20081/Documents/local_data/meta_analysis_output")
 
 load_all()
-corpus <- run_meta_plots(corpus, "/Users/xx20081/Downloads/figures", index=c(1,4,7))
+corpus <- run_meta_plots(corpus, "/Users/xx20081/Downloads/figures", index=c(1))
 
 
 

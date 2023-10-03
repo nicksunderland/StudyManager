@@ -697,8 +697,9 @@ setMethod(
 
       # get the data.table
       dt <- get_data(result)
-      dt[, CHR :=  sub(":.*", "", SNP)]
-      dt[, BP :=  as.numeric(sub(".+:([0-9]+)(?::.*)?", "\\1", SNP))]
+      dt[, CHR := sub(":.*", "", SNP)]
+      dt[, BP  := as.numeric(sub(".+:([0-9]+)(?::.*)?", "\\1", SNP))]
+      dt[, SNP := paste0(CHR,":",BP,":",EFFECT_ALLELE,":",OTHER_ALLELE)]
 
 
       # PLOTTING
@@ -724,6 +725,7 @@ setMethod(
       for(hit_idx in seq_along(nrow(top_hits))) {
 
         study_contrib <- data.table::data.table(cptid=character(),
+                                                SNP=character(),
                                                 CHR=character(),
                                                 BP=integer(),
                                                 P=numeric(),
@@ -731,7 +733,10 @@ setMethod(
                                                 SE=numeric(),
                                                 EFFECT_ALLELE=character(),
                                                 OTHER_ALLELE=character(),
+                                                ORI_EFFECT_ALLELE=character(),
+                                                ORI_OTHER_ALLELE=character(),
                                                 study=character())
+
         hit <- top_hits[hit_idx, ]
 
         key = c(sub("(.*?_.*?)_.*", "\\1", name), sub("(?:.*?_.*?)_(.*)", "\\1", name))
@@ -740,26 +745,35 @@ setMethod(
 
           empty_row <- list(study = basename(study@dir),
                             cptid = NA_character_,
+                            SNP = NA_character_,
                             CHR = hit$CHR,
                             BP = hit$BP,
                             BETA = 0,
                             SE = 0,
                             P = NA_real_,
                             EFFECT_ALLELE = hit$EFFECT_ALLELE,
-                            OTHER_ALLELE = hit$OTHER_ALLELE)
+                            OTHER_ALLELE = hit$OTHER_ALLELE,
+                            ORI_EFFECT_ALLELE = NA_character_,
+                            ORI_OTHER_ALLELE = NA_character_)
 
           if(keys_valid(study, key)) {
+
+            req_cols <- c("cptid", "CHR", "BP", "P", "BETA", "SE", "EFFECT_ALLELE", "OTHER_ALLELE", "ORI_EFFECT_ALLELE", "ORI_OTHER_ALLELE")
+            mapping(study@qc_data_files[[ key ]]) <- set_active(mapping(study@qc_data_files[[ key ]]), req_cols)
             dat <- get_data(extract( study@qc_data_files[[ key ]] ))
-            dat <- dat |> dplyr::select(cptid, CHR, BP, P, BETA, SE, EFFECT_ALLELE, OTHER_ALLELE)
             dat <- dat[CHR==hit$CHR & BP==hit$BP, ]
+            dat[, SNP := paste0(CHR,":",BP,":",ORI_EFFECT_ALLELE,":",ORI_OTHER_ALLELE)]
             dat[ , study := .(basename(study@dir)) ]
 
             if(nrow(dat)==0) {
               dat <- data.table(t(empty_row))
             }
             study_contrib <- rbind(study_contrib, dat)
+
           } else {
+
             study_contrib <- rbind(study_contrib, empty_row, fill=T)
+
           }
 
         }
@@ -774,19 +788,14 @@ setMethod(
 
       # CREATE ZOOM PLOTS
       for(hit_idx in seq_along(nrow(top_hits))) {
+
         file_path <- paste0(output_path, "_", gsub(":","_",top_hits[hit_idx, SNP]), "_meta_locuszoom.png")
+
         create_locuszoom(dt,
                          snp = top_hits[hit_idx, SNP],
                          file_path = file_path,
                          title = paste0("LocusZoom - ", top_hits[hit_idx, SNP], " - ", output_filename))
       }
-
-    }
-
-    if(!is.na(parallel_cores)) {
-
-      cluster(on=FALSE, cluster=cl)
-      sink()
 
     }
 

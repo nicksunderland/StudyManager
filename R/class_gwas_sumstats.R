@@ -1267,48 +1267,73 @@ setMethod(
 
     # get snp info
     snp_row <- dt[SNP==snp, ]
-    snp_id <- paste0(snp_row$SNP, ":", snp_row$EFFECT_ALLELE, ":", snp_row$OTHER_ALLELE)
 
     # set up region
+    snp_id <- snp_row$SNP
     chr <- snp_row$CHR
     pos <- snp_row$BP
-    window_kb <- 500
+    window_kb <- 250
     start <- as.integer(pos)-(window_kb*1000)
     end <- as.integer(pos)+(window_kb*1000)
 
     # Chromosome vcf
-    vcf <- glue::glue("/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3_20130502/ALL.chr{chr}.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz")
+    if(chr=="X") {
+      vcf <- "/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3_20130502/ALL.chrX.phase3_shapeit2_mvncall_integrated_v1c.20130502.genotypes.vcf.gz"
+    } else if(chr %in% as.character(1:22)) {
+      vcf <- glue::glue("/Users/xx20081/Documents/local_data/genome_reference/ref_1000GP_Phase3_20130502/ALL.chr{chr}.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz")
+    } else {
+      stop("Error defining chromosome VCF")
+    }
 
     # Smaller position vcf, for faster processing
-    snp_vcf <- tempfile("position_vcf")
+    snp_vcf <- paste0(tempfile("position_vcf"), ".vcf.gz")
     system(glue::glue("bcftools view --regions {chr}:{start}-{end} --output {snp_vcf} --output-type z {vcf}"))
     system(glue::glue("bcftools index {snp_vcf}"))
+    #quick_look <- as.data.frame(VariantAnnotation::info(VariantAnnotation::readVcf(snp_vcf)))
 
     # calculate LD
     # https://www.cog-genomics.org/plink/1.9/data#set_missing_var_ids
+
+    # do plink r2
     ld_file <- tempfile("ld_data")
-    system(glue::glue("plink --vcf {snp_vcf} --r2 gz --set-missing-var-ids @:#:\\$1:\\$2 --ld-snp {snp_id} --ld-window-kb {window_kb} --ld-window 99999 --ld-window-r2 0 --out {ld_file}"))
-    ld_dat <- data.table::fread(paste0(ld_file, ".ld.gz"))
+    system(glue::glue("plink --vcf {snp_vcf} --r2 gz --ld-snp {snp_id} --ld-window-r2 0 --ld-window-kb {2*window_kb} --ld-window 99999 --set-missing-var-ids @:#:\\$2:\\$1 --out {ld_file}"))
+    if(file.exists(paste0(ld_file, ".ld.gz"))) {
+      ld_dat <- data.table::fread(paste0(ld_file, ".ld.gz"))
+      ld_dat <- ld_dat[SNP_A==snp_id, ]
+    } else {
+      ld_dat <- data.table::data.table("CHR_A"=integer(),"BP_A"=integer(),"SNP_A"=character(),"CHR_B"==integer(),"BP_B"=integer(),"SNP_B"=character(),"R2"=numeric())
+    }
+
+    dt <- dt[CHR==chr & BP>=start & BP<=end, ]
 
     # create the dt for locus zoom
-    dt <- dt |>
-      dplyr::mutate(SNPID = paste0(CHR, ":", BP, ":", EFFECT_ALLELE, ":", OTHER_ALLELE)) |>
-      dplyr::filter(CHR==chr, BP>=start, BP<=end) |>
-      dplyr::left_join(ld_dat, by=c("SNPID"="SNP_B")) |>
-      dplyr::select(CHROM=CHR, POS=BP, P, SNPID, R2)
-
-    # plot locus zoom
-
+    data.table::setnames(ld_dat, "SNP_B", "SNP")
+    dt <- data.table::merge.data.table(dt, ld_dat[, c("SNP", "R2")], by=c("SNP"), all.x=TRUE)
+    #???????? why is flipping necessary???? is it valid????
+    ld_dat[, SNP := sub("((?:[0-9]+|X):(?:[0-9]+)):([CTGA]+):([CTGA]+)", "\\1:\\3:\\2", SNP)]
+    dt <- data.table::merge.data.table(dt, ld_dat[, c("SNP", "R2")], by=c("SNP"), all.x=TRUE)
+    dt[, R2 := dplyr::coalesce(R2.x, R2.y)]
+    data.table::setnames(dt, c("CHR", "BP"), c("CHROM","POS"))
 
     # save plot
     grDevices::png(filename=file_path, bg="white", height=600, width=800, units="px")
-    topr::locuszoom(dt,
-                    build=37,
-                    variant=dt[SNPID==snp_id, ],
-                    annotate_with_vline = 5e-08,
-                    sign_thresh = 5e-8,
-                    region_size = end-start,
-                    ...)
+
+    if(all(is.na(dt$R2))) {
+      title <- paste0(title, " *NO R2 DATA FOUND*")
+      plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab="y", xlab="x", title=title)
+    } else if(is.na(dt[dt$SNP==snp_id, "R2"])) {
+      title <- paste0(title, " *LEAD SNP NOT FOUND*")
+      plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab="y", xlab="x", title=title)
+    } else {
+      topr::locuszoom(dt,
+                      build=37,
+                      variant=dt[SNP==snp_id, ],
+                      annotate_with_vline = 5e-08,
+                      sign_thresh = 5e-8,
+                      region_size = end-start,
+                      ...)
+    }
+
     grDevices::dev.off()
 
     # return
